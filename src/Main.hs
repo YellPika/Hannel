@@ -16,7 +16,7 @@ main = do
 
     forever yield
 
-thrash s r v = void $ forkIO $  forever $ do
+thrash s r v = void $ forkIO $ forever $ do
     value <- sync $ merge [
             fmap (const Nothing) $ s v,
             fmap Just $ r ()

@@ -6,7 +6,6 @@ module Control.Concurrent.Hannel.Event (
 ) where
 
 import Control.Applicative (Applicative, Alternative, empty, (<|>), pure, (<*>))
-import Control.Concurrent (forkIO)
 import Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar)
 import Control.Monad (MonadPlus, mzero, mplus, msum, ap, filterM, void, when)
 import Data.Foldable (Foldable, forM_, toList)
@@ -65,9 +64,7 @@ instance MonadPlus Event where
                                 then (first, second)
                                 else (second, first)
 
-        void $ forkIO $ runEvent first' (Trail.extend trail ChooseLeft) handler
-
-        -- The current thread can be reused to explore the second choice.
+        runEvent first' (Trail.extend trail ChooseLeft) handler
         runEvent second' (Trail.extend trail ChooseRight) handler
 
 instance Applicative Event where
@@ -176,8 +173,8 @@ swap = create $ \trail handler -> do
                 let sendTrail' = Trail.extend sendTrail $ Swap receiveTrail sendRef receiveRef
                 let receiveTrail' = Trail.extend receiveTrail $ Swap sendTrail receiveRef sendRef
 
-                void $ forkIO $ sendHandler receiveValue sendTrail'
-                void $ forkIO $ receiveHandler sendValue receiveTrail'
+                sendHandler receiveValue sendTrail'
+                receiveHandler sendValue receiveTrail'
 
     handler (swap' front back, swap' back front) trail
 
