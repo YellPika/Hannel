@@ -5,17 +5,33 @@ import Control.Concurrent.Hannel
 import Control.Monad
 import System.IO
 
-times num = forM_ [1 :: Int .. num]
+main = test1 >> forever yield
 
-main = do
+test1 = do
+    (s, r) <- sync swap
+    (s', r') <- sync swap
+    (s'', r'') <- sync swap
+
+    thrash s s' r'' "a" "b"
+    thrash s' s'' r "c" "d"
+    thrash s'' s r' "e" "f"
+  where
+    thrash s1 s2 r v1 v2 = forkIO $ forever $ do
+        value <- sync $ msum [ fmap (const v1) (s1 v1)
+                             , fmap (const v2) (s2 v2)
+                             , fmap (const "") (r ())
+                             ]
+
+        putStr value
+        hFlush stdout
+
+test2 = do
     (s, r) <- sync swap
     (s', r') <- sync swap
 
-    thrash s r' "a"
-    thrash s' r "b"
-
-    forever yield
-
+    thrash s r "a"
+    thrash s' r' "b"
+  where
 thrash s r v = void $ forkIO $ forever $ do
     value <- sync $ merge [
             fmap (const Nothing) $ s v,
@@ -24,5 +40,5 @@ thrash s r v = void $ forkIO $ forever $ do
 
     mapM (\x ->
         case x of
-            Just x' -> do { putStr x'; hFlush stdout }
+            Just x' -> putStr x' >> hFlush stdout
             Nothing -> return ()) value

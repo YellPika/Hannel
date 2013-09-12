@@ -1,8 +1,11 @@
 module Control.Concurrent.Hannel.Trail (
-    Trail (), syncLock, path,
+    Trail (Trail), syncLock, path,
     create, extend,
     dependencies, coherent,
+    Path,
     PathElement (ChooseLeft, ChooseRight, Swap),
+    CompletionRef,
+    extends
 ) where
 
 import Data.IORef (IORef) 
