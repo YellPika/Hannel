@@ -7,13 +7,12 @@ module Control.Concurrent.Hannel.Trail (
     Path, PathElement (ChooseLeft, ChooseRight, Swap),
 ) where
 
-import Control.Monad (guard, mzero)
+import Control.Monad (guard)
 import Control.Monad.Trans (liftIO)
 import Control.Monad.List (ListT (..))
 import Data.IORef (IORef, readIORef, atomicModifyIORef) 
 import Data.List (isSuffixOf)
 import Data.Map (Map)
-import Data.Maybe (mapMaybe)
 import qualified Data.Map as Map
 
 import Control.Concurrent.Hannel.SyncLock (SyncLock)
@@ -79,7 +78,7 @@ complete trail action = do
 
 -- Finds a list of possible sets of commitable trails.
 commitSets :: CompleteTrail -> IO [Map SyncLock CompleteTrail]
-commitSets completeValue@(trail, action) = runListT $ do
+commitSets completeValue@(trail, _) = runListT $ do
     let lock = syncLock trail
     synced <- liftIO $ SyncLock.synced lock
     guard $ not synced

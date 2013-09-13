@@ -55,3 +55,4 @@ Received: Hello World
 *TODO:*
 - [ ] Implement proper fairness. Choice is random, but is biased towards the rightmost event in the case where the number of choices is greater than two.
 - [ ] Implement `fork :: IO () -> Event ThreadId`. When synchronized, this event forks the specified action on a new thread. This could be generalized to something like CML's `wrap :: Event a -> (a -> IO ()) -> Event a`, which specifies a post synchronization action.
+- [ ] Implement proper exception handling.
