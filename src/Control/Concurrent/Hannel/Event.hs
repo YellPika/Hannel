@@ -6,8 +6,7 @@ module Control.Concurrent.Hannel.Event (
 
 import Control.Applicative (Applicative, Alternative, empty, (<|>), pure, (<*>))
 import Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar)
-import Control.Monad (MonadPlus, mzero, mplus, msum, ap, filterM, void, when)
-import Data.Foldable (Foldable, forM_, toList)
+import Control.Monad (MonadPlus, mzero, mplus, msum, ap, forM_, filterM, void, when)
 import Data.IORef (newIORef, readIORef, writeIORef, modifyIORef)
 import Data.List (sort)
 import System.Random (randomIO)
@@ -30,12 +29,12 @@ newtype Event a = Event {
 -- running if any of its dependencies have already been synced.
 create :: (Trail -> EventHandler a -> IO ()) -> Event a
 create invoke = Event $ \trail handler -> do
-    ok <- active $ Trail.dependencies trail
+    ok <- active trail
     when ok $ invoke trail handler
 
 -- Returns True iff exactly none of a trail's dependencies have been synced.
-active :: Foldable f => f Trail -> IO Bool
-active = allM (fmap not . SyncLock.synced . Trail.syncLock) . toList
+active :: Trail -> IO Bool
+active = allM (fmap not . SyncLock.synced . Trail.syncLock) . Trail.dependencies
 
 -- Just a short-circuiting implementation of a monadic 'all' function.
 allM :: Monad m => (a -> m Bool) -> [a] -> m Bool
@@ -127,12 +126,14 @@ swap = create $ \trail handler -> do
         takeMVar lock
         return output
 
+    -- Registers value with the senders, cleans inactive trails from both
+    -- queues, and then returns the remaining receivers.
     let clean senders receivers value = withLock $ do
         modifyIORef senders (++ [value])
 
         let clean' queue = do
             queue' <- readIORef queue
-            queue'' <- filterM (\(trail', _, _) -> active $ Trail.dependencies trail') queue'
+            queue'' <- filterM (\(trail', _, _) -> active trail') queue'
             writeIORef queue queue''
             return queue''
 
