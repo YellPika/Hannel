@@ -91,10 +91,12 @@ sync event = do
 syncHandler :: (a -> IO ()) -> a -> Trail -> IO ()
 syncHandler action value trail = do
     completeValue <- Trail.complete trail $ action value
-    --commitSet <- findCommitSet completeValue
     commitSet <- Trail.commitSets completeValue
     case map Map.assocs commitSet of
-        xs:_ -> commit (forM_ xs (snd . snd)) (map fst xs)
+        xs:_ ->
+            let locks = map fst xs
+                actions = map (snd . snd) xs in
+            commit (sequence_ actions) locks
         [] -> return ()
 
 -- Performs an action after acquiring a list of sync locks.
