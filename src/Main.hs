@@ -5,7 +5,7 @@ import Control.Concurrent.Hannel
 import Control.Monad
 import System.IO
 
-main = test1 >> forever yield
+main = test2 >> forever yield
 
 test1 = do
     (s, r) <- sync swap
@@ -29,16 +29,16 @@ test2 = do
     (s, r) <- sync swap
     (s', r') <- sync swap
 
-    thrash s r "a"
-    thrash s' r' "b"
+    thrash s r' "a"
+    thrash s' r "b"
   where
-thrash s r v = void $ forkIO $ forever $ do
-    value <- sync $ merge [
-            fmap (const Nothing) $ s v,
-            fmap Just $ r ()
-        ]
+    thrash s r v = void $ forkIO $ forever $ do
+        value <- sync $ merge [
+                fmap (const Nothing) $ s v,
+                fmap Just $ r ()
+            ]
 
-    mapM (\x ->
-        case x of
-            Just x' -> putStr x' >> hFlush stdout
-            Nothing -> return ()) value
+        mapM (\x ->
+            case x of
+                Just x' -> putStr x' >> hFlush stdout
+                Nothing -> return ()) value

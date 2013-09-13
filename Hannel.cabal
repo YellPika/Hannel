@@ -14,12 +14,12 @@ library
   exposed-modules:     Control.Concurrent.Hannel.Event
   other-modules:       Control.Concurrent.Hannel.SyncLock,
                        Control.Concurrent.Hannel.Trail
-  build-depends:       base >= 4 && < 5, containers, random
+  build-depends:       base >= 4 && < 5, containers, random, mtl
   hs-source-dirs:      src
   ghc-options:         -O2 -Wall -threaded
 
 Executable hannel-test
   main-is:           Main.hs
-  build-depends:     base >= 4 && < 5, containers, random
+  build-depends:     base >= 4 && < 5, containers, random, mtl
   hs-source-dirs:    src
   ghc-options:       -O2 -threaded

@@ -1,4 +1,3 @@
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DoAndIfThenElse #-}
 
 module Control.Concurrent.Hannel.Event (
@@ -7,14 +6,13 @@ module Control.Concurrent.Hannel.Event (
 
 import Control.Applicative (Applicative, Alternative, empty, (<|>), pure, (<*>))
 import Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar)
-import Control.Monad (MonadPlus, forM, mzero, mplus, msum, ap, filterM, void, when)
+import Control.Monad (MonadPlus, mzero, mplus, msum, ap, filterM, void, when)
 import Data.Foldable (Foldable, forM_, toList)
-import Data.IORef (newIORef, readIORef, writeIORef, modifyIORef, atomicModifyIORef)
-import Data.Map (Map)
+import Data.IORef (newIORef, readIORef, writeIORef, modifyIORef)
 import Data.List (sort)
 import System.Random (randomIO)
 import Control.Concurrent.Hannel.SyncLock (SyncLock)
-import Control.Concurrent.Hannel.Trail (Trail, PathElement (..), extends)
+import Control.Concurrent.Hannel.Trail (Trail, PathElement (..))
 
 import qualified Data.Map as Map
 import qualified Control.Concurrent.Hannel.Trail as Trail
@@ -93,15 +91,12 @@ sync event = do
 -- Handler for the sync event.
 syncHandler :: (a -> IO ()) -> a -> Trail -> IO ()
 syncHandler action value trail = do
-        let completeValue = (trail, action value)
-        forM_ (Trail.path trail) $ register completeValue
-
-        commitSet <- findCommitSet completeValue
-        case commitSet of
-            set:_ ->
-                let xs = Map.assocs set in
-                commit (forM_ xs (snd . snd)) (map fst xs)
-            [] -> return ()
+    completeValue <- Trail.complete trail $ action value
+    --commitSet <- findCommitSet completeValue
+    commitSet <- Trail.commitSets completeValue
+    case map Map.assocs commitSet of
+        xs:_ -> commit (forM_ xs (snd . snd)) (map fst xs)
+        [] -> return ()
 
 -- Performs an action after acquiring a list of sync locks.
 commit :: IO () -> [SyncLock] -> IO ()
@@ -115,50 +110,6 @@ commit action = commit' [] . sort
         case handle of
             Just handle' -> commit' (handle':obtained) xs
             Nothing -> forM_ obtained SyncLock.release
-
--- Adds a trail/action pair to a completion ref, if the given element is a swap.
-register :: (Trail, IO ()) -> PathElement -> IO ()
-register x (Swap _ _ ref) = atomicModifyIORef ref ((,()) . (x :))
-register _ _ = return ()
-
--- Constructs a list of possible sets of commitable threads.
-findCommitSet :: (Trail, IO ()) -> IO [Map SyncLock (Trail, IO ())]
-findCommitSet completeValue@(trail, _) = do
-    let lock = Trail.syncLock trail
-    synced <- SyncLock.synced lock
-    if synced then
-        return []
-    else
-        findCommitSet' trail $ Map.singleton lock completeValue
-
--- TODO: Clean this s*** up!
-findCommitSet' :: Trail -> Map SyncLock (Trail, IO ()) -> IO [Map SyncLock (Trail, IO ())]
-findCommitSet' trail refMap =
-    case Trail.path trail of
-        [] -> return [refMap]
-        element:path ->
-            let trail' = trail { Trail.path = path } in
-            case element of
-                ChooseLeft -> findCommitSet' trail' refMap
-                ChooseRight -> findCommitSet' trail' refMap
-                Swap trail'' ref1 ref2 -> do
-                    let lock'' = Trail.syncLock trail''
-                    synced <- SyncLock.synced lock''
-                    if synced then
-                        return []
-                    else
-                        case Map.lookup lock'' refMap of
-                            Just (trail''', _) -> do
-                                if Trail.path trail''' `extends` (Swap trail' ref2 ref1 : Trail.path trail'') then
-                                    findCommitSet' trail' refMap
-                                else
-                                    return []
-                            Nothing -> do
-                                refs <- readIORef ref1
-                                refsMaps <- forM refs $ \ref@(trail''', _) ->
-                                    findCommitSet' trail''' $ Map.insert (Trail.syncLock trail''') ref refMap
-                                refsMaps' <- forM (concat refsMaps) $ findCommitSet' trail'
-                                return $ concat refsMaps'
 
 -- |Creates a pair of functions forming a swap channel. When supplied with a
 -- value, each function returns an event that waits until a value is supplied
