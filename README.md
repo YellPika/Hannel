@@ -14,6 +14,7 @@ instance Functor a
 instance Alternative a
 ```
 
+The `Event` type has the following operations:
 * `sync :: Event a -> IO a` blocks the calling thread until the given event returns a value.
 * `return :: a -> Event a` creates an event that can always be synchronized on. It returns the supplied value. Also known as `pure`.
 * `mzero :: Event a` is an event that can never be synchronized on. Also known as `empty`.
