@@ -6,11 +6,13 @@ module Control.Concurrent.Hannel.Event (
 
 import Control.Applicative (Applicative, Alternative, empty, (<|>), pure, (<*>))
 import Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar)
-import Control.Monad (MonadPlus, mzero, mplus, msum, ap, forM_, filterM, void, when)
+import Control.Monad (MonadPlus, mzero, mplus, msum, ap, forM, forM_, filterM, void, when)
+import Data.Array.IO (IOArray, newListArray, readArray, writeArray)
 import Data.IORef (newIORef, readIORef, writeIORef, modifyIORef)
-import Control.Concurrent.Hannel.Trail (Trail, TrailElement (..))
-
+import System.Random (randomRIO)
 import qualified Data.Map as Map
+
+import Control.Concurrent.Hannel.Trail (Trail, TrailElement (..))
 import qualified Control.Concurrent.Hannel.Trail as Trail
 import qualified Control.Concurrent.Hannel.SyncLock as SyncLock
 
@@ -21,12 +23,26 @@ type EventHandler a = a -> Trail -> IO ()
 newtype Event a = Event [Trail -> EventHandler a -> IO ()]
 
 runEvent :: Event a -> Trail -> EventHandler a -> IO ()
-runEvent (Event events) trail handler = run events trail
+runEvent (Event events) trail handler = shuffle events >>= run trail
   where
-    run [] _ = return ()
-    run (x:xs) trail' = do
+    run _ [] = return ()
+    run trail' (x:xs) = do
         void $ x (Trail.extend trail' ChooseLeft) handler
-        run xs $ Trail.extend trail' ChooseRight
+        run (Trail.extend trail' ChooseRight) xs
+
+shuffle :: [a] -> IO [a]
+shuffle xs = do
+    let len = length xs
+    ar <- newArray len xs
+    forM [1 .. len] $ \i -> do
+        j <- randomRIO (i, len)
+        vi <- readArray ar i
+        vj <- readArray ar j
+        writeArray ar j vi
+        return vj
+
+newArray :: Int -> [a] -> IO (IOArray Int a)
+newArray n =  newListArray (1,n)
 
 -- Wraps an event invocation function. This prevents an event from
 -- running if any of its dependencies have already been synced.
