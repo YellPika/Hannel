@@ -112,8 +112,12 @@ swap = create $ \trail handler -> do
                 sendRef <- newIORef []
                 receiveRef <- newIORef[]
 
-                let sendTrail' = Trail.extend sendTrail $ Swap receiveTrail sendRef receiveRef
-                let receiveTrail' = Trail.extend receiveTrail $ Swap sendTrail receiveRef sendRef
+                let sendTrail' =
+                        Trail.extend sendTrail $
+                        Swap receiveTrail sendRef receiveRef
+                    receiveTrail' =
+                        Trail.extend receiveTrail $
+                        Swap sendTrail receiveRef sendRef
 
                 sendHandler receiveValue sendTrail'
                 receiveHandler sendValue receiveTrail'
