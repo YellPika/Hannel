@@ -8,7 +8,6 @@ import Control.Applicative (Applicative, Alternative, empty, (<|>), pure, (<*>))
 import Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar)
 import Control.Monad (MonadPlus, mzero, mplus, msum, ap, forM_, filterM, void, when)
 import Data.IORef (newIORef, readIORef, writeIORef, modifyIORef)
-import System.Random (randomIO)
 import Control.Concurrent.Hannel.Trail (Trail, TrailElement (..))
 
 import qualified Data.Map as Map
@@ -19,16 +18,24 @@ type EventHandler a = a -> Trail -> IO ()
 
 -- |When synchronized upon, an event performs synchronous
 -- operations with other threads before returning a value.
-newtype Event a = Event {
-    runEvent :: Trail -> EventHandler a -> IO ()
-}
+newtype Event a = Event [Trail -> EventHandler a -> IO ()]
+
+runEvent :: Event a -> Trail -> EventHandler a -> IO ()
+runEvent (Event events) trail handler = run events trail
+  where
+    run [] _ = return ()
+    run (x:xs) trail' = do
+        void $ x (Trail.extend trail' ChooseLeft) handler
+        run xs $ Trail.extend trail' ChooseRight
 
 -- Wraps an event invocation function. This prevents an event from
 -- running if any of its dependencies have already been synced.
 create :: (Trail -> EventHandler a -> IO ()) -> Event a
-create invoke = Event $ \trail handler -> do
-    ok <- Trail.isActive trail
-    when ok $ invoke trail handler
+create invoke = Event [invoke']
+  where
+    invoke' trail handler = do
+        ok <- Trail.isActive trail
+        when ok $ invoke trail handler
 
 -- |Blocks the current thread until the specified event yields a value.
 sync :: Event a -> IO a
@@ -119,23 +126,15 @@ instance Monad Event where
     return x = create $ \trail handler ->
         handler x trail
 
-    x >>= f = create $ \trail handler ->
-        runEvent x trail $ \x' trail' ->
-            runEvent (f x') trail' handler
+    Event xs >>= f = Event $ map invoke xs
+      where
+        invoke x trail handler =
+            x trail $ \x' trail' ->
+                runEvent (f x') trail' handler
 
 instance MonadPlus Event where
-    -- Since mzero doesn't actually do anything,
-    -- we can forgo wrapping it with 'create'.
-    mzero = Event $ \_ _ -> return ()
-
-    mplus first second = create $ \trail handler -> do
-        rand <- randomIO
-        let (first', second') = if rand
-                                then (first, second)
-                                else (second, first)
-
-        runEvent first' (Trail.extend trail ChooseLeft) handler
-        runEvent second' (Trail.extend trail ChooseRight) handler
+    mzero = Event []
+    mplus (Event first) (Event second) = Event (first ++ second)
 
 instance Applicative Event where
     pure = return
@@ -146,6 +145,6 @@ instance Alternative Event where
     (<|>) = mplus
 
 instance Functor Event where
-    -- More efficient than liftM.
-    fmap f x = create $ \trail handler ->
-        runEvent x trail (handler . f)
+    fmap f (Event xs) = Event $ map invoke xs
+      where
+        invoke x trail handler = x trail (handler . f)
