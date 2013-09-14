@@ -1,65 +1,80 @@
 {-# LANGUAGE DoAndIfThenElse #-}
 
 module Control.Concurrent.Hannel.SyncLock (
-    SyncLock (), SyncLockHandle (),
-    create,
-    acquire, release,
-    sync, synced
+    SyncLock (), create, isSynced, withAll
 ) where
 
 import Control.Concurrent.MVar (MVar, newMVar, putMVar, takeMVar)
 import Data.IORef (IORef, newIORef, readIORef, atomicWriteIORef)
+import Data.List (sort)
 import Data.Unique (Unique, newUnique)
 
-data SyncLockHandle = SyncLockHandle {
-    statusVar :: MVar Bool,
-    syncedVar :: IORef Bool
-}
-
--- A special kind of lock which may become 'synced',
--- permanently preventing the lock from being obtained.
 data SyncLock = SyncLock {
-    uniqueID :: Unique,
+    identifier :: Unique,
     handle :: SyncLockHandle
 }
 
-instance Eq SyncLock where
-    x == y = uniqueID x == uniqueID y
+data SyncLockHandle = SyncLockHandle {
+    status :: MVar Bool,
+    synced :: IORef Bool
+}
 
--- Implementing Ord to assign a global ordering to locks,
--- allowing us to obtain an arbitrary amount of locks without
--- worrying about deadlock.
+instance Eq SyncLock where
+    x == y = identifier x == identifier y
 instance Ord SyncLock where
-    compare x y = compare (uniqueID x) (uniqueID y)
+    compare x y = compare (identifier x) (identifier y)
 
 create :: IO SyncLock
 create = do
-    unique <- newUnique
-    mVar <- newMVar False
-    syncVal <- newIORef False
+    identifier' <- newUnique
+    status' <- newMVar False
+    synced' <- newIORef False
 
-    return $ SyncLock unique $ SyncLockHandle mVar syncVal
+    return SyncLock {
+        identifier = identifier',
+        handle = SyncLockHandle {
+            status = status',
+            synced = synced'
+        }
+    }
+
+isSynced :: SyncLock -> IO Bool
+isSynced = readIORef . synced . handle
+
+withAll :: [SyncLock] -> IO a -> IO (Maybe a)
+withAll locks action = withAll' [] $ sort locks
+  where
+    withAll' obtained [] = do
+        output <- action
+        mapM_ sync obtained
+        return $ Just output
+    withAll' obtained (x:xs) = do
+        acquisition <- acquire x
+        case acquisition of
+            Just handle' -> withAll' (handle' : obtained) xs
+            Nothing -> do
+                mapM_ release obtained
+                return Nothing
 
 acquire :: SyncLock -> IO (Maybe SyncLockHandle)
 acquire lock = do
-    synced' <- readIORef $ syncedVar $ handle lock
+    let handle' = handle lock
+
+    synced' <- readIORef $ synced handle'
     if synced' then
         return Nothing
     else do
-        result <- takeMVar $ statusVar $ handle lock
-        if result then do
-            putMVar (statusVar $ handle lock) True
+        synced'' <- takeMVar $ status handle'
+        if synced'' then do
+            putMVar (status handle') True
             return Nothing
         else
-            return $ Just $ handle lock
+            return $ Just handle'
 
 release :: SyncLockHandle -> IO ()
-release handle' = putMVar (statusVar handle') False
+release handle' = putMVar (status  handle') False
 
 sync :: SyncLockHandle -> IO ()
 sync handle' = do
-    atomicWriteIORef (syncedVar handle') True
-    putMVar (statusVar handle') True
-
-synced :: SyncLock -> IO Bool
-synced = readIORef . syncedVar . handle
+    atomicWriteIORef (synced handle') True
+    putMVar (status handle') True

@@ -8,10 +8,8 @@ import Control.Applicative (Applicative, Alternative, empty, (<|>), pure, (<*>))
 import Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar)
 import Control.Monad (MonadPlus, mzero, mplus, msum, ap, forM_, filterM, void, when)
 import Data.IORef (newIORef, readIORef, writeIORef, modifyIORef)
-import Data.List (sort)
 import System.Random (randomIO)
-import Control.Concurrent.Hannel.SyncLock (SyncLock)
-import Control.Concurrent.Hannel.Trail (Trail, PathElement (..))
+import Control.Concurrent.Hannel.Trail (Trail, TrailElement (..))
 
 import qualified Data.Map as Map
 import qualified Control.Concurrent.Hannel.Trail as Trail
@@ -29,54 +27,8 @@ newtype Event a = Event {
 -- running if any of its dependencies have already been synced.
 create :: (Trail -> EventHandler a -> IO ()) -> Event a
 create invoke = Event $ \trail handler -> do
-    ok <- active trail
+    ok <- Trail.isActive trail
     when ok $ invoke trail handler
-
--- Returns True iff exactly none of a trail's dependencies have been synced.
-active :: Trail -> IO Bool
-active = allM (fmap not . SyncLock.synced . Trail.syncLock) . Trail.dependencies
-
--- Just a short-circuiting implementation of a monadic 'all' function.
-allM :: Monad m => (a -> m Bool) -> [a] -> m Bool
-allM _ [] = return True
-allM f (x:xs) = do
-    x' <- f x
-    if x' then allM f xs else return False
-
-instance Monad Event where
-    return x = create $ \trail handler ->
-        handler x trail
-
-    x >>= f = create $ \trail handler ->
-        runEvent x trail $ \x' trail' ->
-            runEvent (f x') trail' handler
-
-instance MonadPlus Event where
-    -- Since mzero doesn't actually do anything,
-    -- we can forgo wrapping it with 'create'.
-    mzero = Event $ \_ _ -> return ()
-
-    mplus first second = create $ \trail handler -> do
-        rand <- randomIO
-        let (first', second') = if rand
-                                then (first, second)
-                                else (second, first)
-
-        runEvent first' (Trail.extend trail ChooseLeft) handler
-        runEvent second' (Trail.extend trail ChooseRight) handler
-
-instance Applicative Event where
-    pure = return
-    (<*>) = ap
-
-instance Alternative Event where
-    empty = mzero
-    (<|>) = mplus
-
-instance Functor Event where
-    -- More efficient than liftM.
-    fmap f x = create $ \trail handler ->
-        runEvent x trail (handler . f)
 
 -- |Blocks the current thread until the specified event yields a value.
 sync :: Event a -> IO a
@@ -93,24 +45,12 @@ syncHandler action value trail = do
     completeValue <- Trail.complete trail $ action value
     commitSet <- Trail.commitSets completeValue
     case map Map.assocs commitSet of
+        [] -> return ()
         xs:_ ->
             let locks = map fst xs
                 actions = map (snd . snd) xs in
-            commit (sequence_ actions) locks
-        [] -> return ()
-
--- Performs an action after acquiring a list of sync locks.
-commit :: IO () -> [SyncLock] -> IO ()
-commit action = commit' [] . sort
-  where
-    commit' obtained [] = do
-        action
-        forM_ obtained SyncLock.sync
-    commit' obtained (x:xs) = do
-        handle <- SyncLock.acquire x
-        case handle of
-            Just handle' -> commit' (handle':obtained) xs
-            Nothing -> forM_ obtained SyncLock.release
+            void $ SyncLock.withAll locks $
+                sequence_ actions
 
 -- |Creates a pair of functions forming a swap channel. When supplied with a
 -- value, each function returns an event that waits until a value is supplied
@@ -135,7 +75,7 @@ swap = create $ \trail handler -> do
 
         let clean' queue = do
             queue' <- readIORef queue
-            queue'' <- filterM (\(trail', _, _) -> active trail') queue'
+            queue'' <- filterM (\(trail', _, _) -> Trail.isActive trail') queue'
             writeIORef queue queue''
             return queue''
 
@@ -174,3 +114,38 @@ merge xs = do
 splits :: [a] -> [([a], a, [a])]
 splits [] = []
 splits (x:xs) = ([], x, xs) : map (\(l, c, r) -> (x:l, c, r)) (splits xs)
+
+instance Monad Event where
+    return x = create $ \trail handler ->
+        handler x trail
+
+    x >>= f = create $ \trail handler ->
+        runEvent x trail $ \x' trail' ->
+            runEvent (f x') trail' handler
+
+instance MonadPlus Event where
+    -- Since mzero doesn't actually do anything,
+    -- we can forgo wrapping it with 'create'.
+    mzero = Event $ \_ _ -> return ()
+
+    mplus first second = create $ \trail handler -> do
+        rand <- randomIO
+        let (first', second') = if rand
+                                then (first, second)
+                                else (second, first)
+
+        runEvent first' (Trail.extend trail ChooseLeft) handler
+        runEvent second' (Trail.extend trail ChooseRight) handler
+
+instance Applicative Event where
+    pure = return
+    (<*>) = ap
+
+instance Alternative Event where
+    empty = mzero
+    (<|>) = mplus
+
+instance Functor Event where
+    -- More efficient than liftM.
+    fmap f x = create $ \trail handler ->
+        runEvent x trail (handler . f)
