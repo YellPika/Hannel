@@ -9,7 +9,7 @@ module Control.Concurrent.Hannel.Internal.Event (
 import Control.Concurrent (ThreadId)
 import Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar)
 import Control.Applicative (Applicative, Alternative, empty, (<|>), pure, (<*>))
-import Control.Monad (MonadPlus, mzero, mplus, ap, forM, void, when)
+import Control.Monad (MonadPlus, mzero, mplus, ap, forM, foldM_, void, when)
 import Data.Array.IO (IOArray, newListArray, readArray, writeArray)
 import System.Random (randomRIO)
 import qualified Data.Map as Map
@@ -25,12 +25,11 @@ type EventHandler a = a -> Trail -> IO ()
 newtype Event a = Event [Trail -> EventHandler a -> IO ()]
 
 runEvent :: Event a -> Trail -> EventHandler a -> IO ()
-runEvent (Event events) trail handler = shuffle events >>= run trail
-  where
-    run _ [] = return ()
-    run trail' (x:xs) = do
-        void $ x (Trail.extend trail' ChooseLeft) handler
-        run (Trail.extend trail' ChooseRight) xs
+runEvent (Event events) trail handler =
+    shuffle events >>=
+    foldM_ (\i x -> do
+        x (Trail.extend trail $ Choose i) handler
+        return $ i + 1) 0
 
 shuffle :: [a] -> IO [a]
 shuffle xs = do

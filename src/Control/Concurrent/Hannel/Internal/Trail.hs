@@ -18,7 +18,7 @@ import Control.Concurrent.Hannel.Internal.SyncLock (SyncLock)
 import qualified Control.Concurrent.Hannel.Internal.SyncLock as SyncLock
 
 data TrailElement
-    = ChooseLeft | ChooseRight
+    = Choose Integer
     | Swap Trail CompletionRef CompletionRef
   deriving Eq
 
@@ -110,8 +110,7 @@ dependencies trail =
     trail :
     case path trail of
         [] -> []
-        ChooseLeft:xs -> dependencies (trail { path = xs })
-        ChooseRight:xs -> dependencies (trail { path = xs })
+        Choose _:xs -> dependencies (trail { path = xs })
         Swap partner cRef1 cRef2 : xs ->
             extend partner (Swap (trail { path = xs }) cRef2 cRef1) :
             dependencies trail { path = xs } ++
