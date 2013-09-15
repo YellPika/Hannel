@@ -1,9 +1,12 @@
 {-# LANGUAGE DoAndIfThenElse #-}
 
 module Control.Concurrent.Hannel.Internal.Event (
-    Event (), EventHandler, create, sync, wrap
+    Event (), EventHandler,
+    create, sync,
+    wrap, threadID
 ) where
 
+import Control.Concurrent (ThreadId)
 import Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar)
 import Control.Applicative (Applicative, Alternative, empty, (<|>), pure, (<*>))
 import Control.Monad (MonadPlus, mzero, mplus, ap, forM, void, when)
@@ -81,6 +84,11 @@ wrap action (Event xs) = Event $ map wrap' xs
     wrap' invoke trail handler =
         invoke trail $ \x trail' ->
             handler x $ Trail.wrap trail' $ action x
+
+-- |An event that returns the thread ID of the synchronizing thread.
+threadID :: Event ThreadId
+threadID = create $ \trail handler ->
+    handler (Trail.threadID trail) trail
 
 instance Monad Event where
     return x = create $ \trail handler ->
