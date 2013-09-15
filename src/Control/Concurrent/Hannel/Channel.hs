@@ -1,7 +1,7 @@
 {-# LANGUAGE FunctionalDependencies #-}
 
 module Control.Concurrent.Hannel.Channel (
-    Channel, swap
+    Channel, swap, signal
 ) where
 
-import Control.Concurrent.Hannel.Internal.Channel (Channel, swap)
+import Control.Concurrent.Hannel.Internal.Channel (Channel, swap, signal)

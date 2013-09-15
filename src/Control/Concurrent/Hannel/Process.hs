@@ -1,5 +1,5 @@
 module Control.Concurrent.Hannel.Process (
-    Process, with, withIO
+    Process, finish, with, withIO
 ) where
 
 import Control.Exception (bracket)
