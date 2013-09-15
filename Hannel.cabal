@@ -17,7 +17,8 @@ library
                        Control.Concurrent.Hannel.Process,
                        Control.Concurrent.Hannel.RoundChannel,
                        Control.Concurrent.Hannel.SwapChannel
-  other-modules:       Control.Concurrent.Hannel.Internal.Event,
+  other-modules:       Control.Concurrent.Hannel.Internal.Channel,
+                       Control.Concurrent.Hannel.Internal.Event,
                        Control.Concurrent.Hannel.Internal.SwapChannel,
                        Control.Concurrent.Hannel.Internal.SyncLock,
                        Control.Concurrent.Hannel.Internal.Trail
