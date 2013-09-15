@@ -17,34 +17,34 @@ import qualified Control.Concurrent.Hannel.SwapChannel as SwapChannel
 data RoundChannel a = RoundChannel Int (SwapChannel () (a, ThreadId, SwapChannel [a] ()))
 
 create :: Int -> Event (RoundChannel a)
-create count = fmap (RoundChannel count) SwapChannel.create
+create count = RoundChannel count <$> SwapChannel.create
 
 instance Channel (RoundChannel a) a [a] where
-    swap (RoundChannel count channel) value = server `mplus` client
+    swap chan value = client' `mplus` server
       where
-        server = do
-            threadID <- Event.threadID
+        client' = client chan value
+        server' = server chan value
 
-            -- Receive count - 1 instances of (value, client).
-            clients <- replicateM (count - 1) $ do
-                (value', threadID', response) <- swap channel ()
+client :: RoundChannel a -> a -> Event [a]
+client (RoundChannel count channel) value = do
+    response <- SwapChannel.create
+    threadID <- Event.threadID
+    swap (other channel) (value, threadID, response)
+    swap (other response) ()
 
-                -- Let the smallest threadID be the server (faster).
-                guard (threadID < threadID')
+server :: RoundChannel a -> a -> Event [a]
+server (RoundChannel count channel) value = do
+    threadID <- Event.threadID
 
-                return (value', response)
+    clients <- replicateM (count - 1) $ do
+        (value', threadID', response) <- swap channel ()
+        guard (threadID < threadID')
+        return (value', response)
 
-            -- Send all the other values to each client.
-            forM (deletions clients) $ \((value', response), remaining) -> do
-                let values = map fst remaining
-                swap response (value:values)
-                return value'
-
-        client = do
-            response <- SwapChannel.create
-            threadID <- Event.threadID
-            swap (other channel) (value, threadID, response)
-            swap (other response) ()
+    forM (deletions clients) $ \((value', response), remaining) -> do
+        let values = map fst remaining
+        swap response (value:values)
+        return value'
 
 deletions :: [a] -> [(a, [a])]
 deletions [] = []
