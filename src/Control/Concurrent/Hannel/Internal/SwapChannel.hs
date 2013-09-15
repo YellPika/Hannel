@@ -1,5 +1,5 @@
-module Control.Concurrent.Hannel.Internal.Channel (
-    Channel (), create, other, swap
+module Control.Concurrent.Hannel.Internal.SwapChannel (
+    SwapChannel (), create, other, swap
 ) where
 
 import Control.Concurrent.MVar (MVar, newMVar, withMVar)
@@ -13,25 +13,29 @@ import qualified Control.Concurrent.Hannel.Internal.Trail as Trail
 
 type SwapData i o = (Trail, EventHandler o, i)
 
-data Channel f b = Channel {
+-- |A one-to-one synchronous swap channel.
+data SwapChannel f b = SwapChannel {
     lock :: MVar (),
     front :: IORef [SwapData f b],
     back :: IORef [SwapData b f]
 }
 
-create :: Event (Channel i o)
+-- |Creates a new synchronous channel.
+create :: Event (SwapChannel i o)
 create = Event.create $ \trail handler -> do
     lock' <- newMVar ()
     front' <- newIORef []
     back' <- newIORef []
 
-    let output = Channel { lock = lock', front = front', back = back' }
+    let output = SwapChannel { lock = lock', front = front', back = back' }
     handler output trail
 
-other :: Channel f b -> Channel b f
+-- |Gets the other side of a channel.
+other :: SwapChannel f b -> SwapChannel b f
 other channel = channel { front = back channel, back = front channel }
 
-swap :: Channel f b -> f -> Event b
+-- |Swaps a value with the other side of a channel.
+swap :: SwapChannel f b -> f -> Event b
 swap channel value = Event.create $ \trail handler -> do
     remaining <- withMVar (lock channel) $ \_ -> do
         -- Enqueue the swap data on the front queue for future swappers.

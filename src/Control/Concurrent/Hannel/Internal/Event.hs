@@ -3,7 +3,7 @@
 module Control.Concurrent.Hannel.Internal.Event (
     Event (), EventHandler,
     create, sync,
-    wrap, threadID
+    wrap, post, threadID
 ) where
 
 import Control.Concurrent (ThreadId)
@@ -83,6 +83,10 @@ wrap action (Event xs) = Event $ map wrap' xs
     wrap' invoke trail handler =
         invoke trail $ \x trail' ->
             handler x $ Trail.wrap trail' $ action x
+
+-- |Creates an event that performs a given action upon synchronization.
+post :: IO () -> Event ()
+post = flip wrap (return ()) . const
 
 -- |An event that returns the thread ID of the synchronizing thread.
 threadID :: Event ThreadId
