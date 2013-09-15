@@ -5,8 +5,9 @@ module Control.Concurrent.Hannel.RoundChannel (
     RoundChannel (), create
 ) where
 
+import Control.Applicative ((<$>), (<|>))
 import Control.Concurrent (ThreadId)
-import Control.Monad (replicateM, mplus, forM, guard)
+import Control.Monad (replicateM, forM, guard)
 
 import Control.Concurrent.Hannel.Channel (Channel, swap)
 import Control.Concurrent.Hannel.Event (Event)
@@ -20,13 +21,13 @@ create :: Int -> Event (RoundChannel a)
 create count = RoundChannel count <$> SwapChannel.create
 
 instance Channel (RoundChannel a) a [a] where
-    swap chan value = client' `mplus` server
+    swap channel value = client' <|> server'
       where
-        client' = client chan value
-        server' = server chan value
+        client' = client channel value
+        server' = server channel value
 
 client :: RoundChannel a -> a -> Event [a]
-client (RoundChannel count channel) value = do
+client (RoundChannel _ channel) value = do
     response <- SwapChannel.create
     threadID <- Event.threadID
     swap (other channel) (value, threadID, response)
