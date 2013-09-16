@@ -1,9 +1,9 @@
 module Control.Concurrent.Hannel.Event (
-    Event (), sync, merge, wrap, threadID
+    Event (), sync, merge, wrap, post, threadID
 ) where
 
 import Control.Monad (msum)
-import Control.Concurrent.Hannel.Internal.Event (Event (), sync, wrap, threadID)
+import Control.Concurrent.Hannel.Internal.Event (Event (), sync, wrap, post, threadID)
 
 -- |Merges a list of events. The resulting event will wait for all the source
 -- events to synchronize before returning a value. Unlike
