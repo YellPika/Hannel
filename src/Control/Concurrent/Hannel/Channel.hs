@@ -1,5 +1,3 @@
-{-# LANGUAGE FunctionalDependencies #-}
-
 module Control.Concurrent.Hannel.Channel (
     Channel, swap, signal
 ) where

@@ -92,7 +92,7 @@ updateTrailMap trail@(Trail _ (Swap swapTrail ref1 ref2 : xs) _ _) set = do
     case Map.lookup swapLock set of
         Just (mapTrail, _) -> do
             let swapPth' = Swap (trail { path = xs }) ref2 ref1 : path swapTrail
-            guard $ (path mapTrail) `extends` swapPth'
+            guard $ path mapTrail `extends` swapPth'
             return set
         Nothing -> do
             ref@(refTrail, _) <- ListT $ readIORef ref1
