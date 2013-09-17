@@ -1,8 +1,8 @@
 {-# LANGUAGE DoAndIfThenElse #-}
 
 module Control.Concurrent.Hannel.Internal.Event (
-    Event (), EventHandler,
-    create, sync, threadID
+    Event (), EventHandler, create, threadID,
+    MonadSync, sync
 ) where
 
 import Control.Concurrent (ThreadId)
@@ -53,14 +53,22 @@ create invoke = Event [invoke']
         ok <- Trail.isActive trail
         when ok $ invoke trail handler
 
--- |Blocks the current thread until the specified event yields a value.
-sync :: Event a -> IO a
-sync event = do
-    trail <- Trail.create
-    output <- newEmptyMVar
+-- |An event that returns the thread ID of the synchronizing thread.
+threadID :: Event ThreadId
+threadID = create $ \trail handler ->
+    handler (Trail.threadID trail) trail
 
-    runEvent event trail $ syncHandler $ putMVar output
-    takeMVar output
+class Monad m => MonadSync m where
+    -- |Blocks the current thread until the specified event yields a value.
+    sync :: Event a -> m a
+
+instance MonadSync IO where
+    sync event = do
+        trail <- Trail.create
+        output <- newEmptyMVar
+
+        runEvent event trail $ syncHandler $ putMVar output
+        takeMVar output
 
 -- Handler for the sync event.
 syncHandler :: (a -> IO ()) -> a -> Trail -> IO ()
@@ -74,11 +82,6 @@ syncHandler action value trail = do
                 actions = map (snd . snd) xs in
             void $ SyncLock.withAll locks $
                 sequence_ actions
-
--- |An event that returns the thread ID of the synchronizing thread.
-threadID :: Event ThreadId
-threadID = create $ \trail handler ->
-    handler (Trail.threadID trail) trail
 
 instance Monad Event where
     return x = create $ \trail handler ->
