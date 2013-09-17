@@ -1,4 +1,6 @@
 {-# LANGUAGE DoAndIfThenElse #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Control.Concurrent.Hannel.Internal.Event (
     Event (), EventHandler, create, threadID,
@@ -9,6 +11,7 @@ import Control.Concurrent (ThreadId)
 import Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar)
 import Control.Applicative (Applicative, Alternative, empty, (<|>), pure, (<*>))
 import Control.Monad (MonadPlus, mzero, mplus, ap, forM, foldM_, void, when)
+import Control.Monad.Trans (MonadIO, liftIO)
 import Data.Array.IO (IOArray, newListArray, readArray, writeArray)
 import System.Random (randomRIO)
 import qualified Data.Map as Map
@@ -62,8 +65,8 @@ class Monad m => MonadSync m where
     -- |Blocks the current thread until the specified event yields a value.
     sync :: Event a -> m a
 
-instance MonadSync IO where
-    sync event = do
+instance MonadIO m => MonadSync m where
+    sync event = liftIO $ do
         trail <- Trail.create
         output <- newEmptyMVar
 
