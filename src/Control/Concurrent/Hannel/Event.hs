@@ -1,11 +1,11 @@
 module Control.Concurrent.Hannel.Event (
-    Event (), sync, merge, tee, split, wrap, post, threadID
+    Event (), sync, merge, tee, split, threadID
 ) where
 
 import Control.Applicative ((<|>))
 import Control.Monad (msum)
 import Control.Concurrent.Hannel.Internal.Channel (signal, swap)
-import Control.Concurrent.Hannel.Internal.Event (Event (), sync, wrap, post, threadID)
+import Control.Concurrent.Hannel.Internal.Event (Event (), sync, threadID)
 import Control.Concurrent.Hannel.Internal.SwapChannel (create, other)
 
 -- |Merges a list of events. The resulting event will wait for all the source

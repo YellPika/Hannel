@@ -1,6 +1,6 @@
 module Control.Concurrent.Hannel.Internal.Trail (
     Trail (), TrailElement (..),
-    create, extend, complete, wrap,
+    create, extend, complete,
     commitSets, threadID,
     isActive, isCoherent
 ) where
@@ -25,8 +25,7 @@ data TrailElement
 data Trail = Trail {
     syncLock :: SyncLock,
     path :: Path,
-    threadID :: ThreadId,
-    commitAction :: IO ()
+    threadID :: ThreadId
 }
 
 instance Eq Trail where
@@ -44,15 +43,11 @@ create = do
     return Trail {
         syncLock = syncLock',
         path = [],
-        threadID = threadID',
-        commitAction = return ()
+        threadID = threadID'
     }
 
 extend :: Trail -> TrailElement -> Trail
 extend trail element = trail { path = element : path trail }
-
-wrap :: Trail -> IO () -> Trail
-wrap trail action = trail { commitAction = commitAction trail >> action }
 
 complete :: Trail -> IO () -> IO CompleteTrail
 complete trail action = do
@@ -60,7 +55,7 @@ complete trail action = do
     return output
   where
     output :: CompleteTrail
-    output = (trail, action >> commitAction trail)
+    output = (trail, action)
 
     register :: TrailElement -> IO ()
     register (Swap _ _ ref) = atomicModifyIORef ref (\x -> (output:x, ()))
@@ -78,13 +73,13 @@ commitSets completeValue@(trail, _) = runListT $ do
     commitSets' trail $ Map.singleton lock completeValue
 
 commitSets' :: Trail -> CommitSet -> ListT IO CommitSet
-commitSets' (Trail _ [] _ _) set = return set
-commitSets' trail@(Trail _ (_:xs) _ _) set = do
+commitSets' (Trail _ [] _) set = return set
+commitSets' trail@(Trail _ (_:xs) _) set = do
     set' <- updateTrailMap trail set
     commitSets' (trail { path = xs }) set'
 
 updateTrailMap :: Trail -> CommitSet -> ListT IO CommitSet
-updateTrailMap trail@(Trail _ (Swap swapTrail ref1 ref2 : xs) _ _) set = do
+updateTrailMap trail@(Trail _ (Swap swapTrail ref1 ref2 : xs) _) set = do
     let swapLock = syncLock swapTrail
     synced <- liftIO $ SyncLock.isSynced swapLock
     guard $ not synced

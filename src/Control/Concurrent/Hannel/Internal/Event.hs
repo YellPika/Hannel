@@ -2,8 +2,7 @@
 
 module Control.Concurrent.Hannel.Internal.Event (
     Event (), EventHandler,
-    create, sync,
-    wrap, post, threadID
+    create, sync, threadID
 ) where
 
 import Control.Concurrent (ThreadId)
@@ -75,18 +74,6 @@ syncHandler action value trail = do
                 actions = map (snd . snd) xs in
             void $ SyncLock.withAll locks $
                 sequence_ actions
-
--- |Specifies a post-synchronization action for an event.
-wrap :: (a -> IO ()) -> Event a -> Event a
-wrap action (Event xs) = Event $ map wrap' xs
-  where
-    wrap' invoke trail handler =
-        invoke trail $ \x trail' ->
-            handler x $ Trail.wrap trail' $ action x
-
--- |Creates an event that performs a given action upon synchronization.
-post :: IO () -> Event ()
-post = flip wrap (return ()) . const
 
 -- |An event that returns the thread ID of the synchronizing thread.
 threadID :: Event ThreadId
