@@ -16,8 +16,10 @@ import Control.Concurrent.Hannel.SwapChannel hiding (create)
 import qualified Control.Concurrent.Hannel.RoundChannel as RoundChannel
 import qualified Control.Concurrent.Hannel.SwapChannel as SwapChannel
 
+-- |An event that returns a new swap channel.
 createSwapChannel :: Event (SwapChannel f b)
 createSwapChannel = SwapChannel.create
 
+-- |An event that returns a new round channel.
 createRoundChannel :: Int -> Event (RoundChannel a)
 createRoundChannel = RoundChannel.create

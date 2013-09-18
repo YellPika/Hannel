@@ -1,6 +1,7 @@
 # Haskell stuff
 dist
 cabal-dev
+cabal.sandbox.config
 *.o
 *.hi
 *.chi
