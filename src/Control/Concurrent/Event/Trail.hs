@@ -1,3 +1,5 @@
+{-# LANGUAGE Safe #-}
+
 module Control.Concurrent.Event.Trail (
     Trail (), TrailElement (..),
     newTrail, extend, complete,

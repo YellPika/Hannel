@@ -1,3 +1,5 @@
+{-# LANGUAGE Safe #-}
+
 module Control.Concurrent.Event (
     Event, sync, merge, threadID, tee, split,
     module Control.Concurrent.Event.Class

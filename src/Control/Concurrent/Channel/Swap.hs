@@ -1,5 +1,6 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE Safe #-}
 
 module Control.Concurrent.Channel.Swap (
     SwapChannel (), newSwapChannel, other,

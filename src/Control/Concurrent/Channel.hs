@@ -1,3 +1,5 @@
+{-# LANGUAGE Safe #-}
+
 module Control.Concurrent.Channel (
     module Control.Concurrent.Channel.Class,
     module Control.Concurrent.Channel.Round,

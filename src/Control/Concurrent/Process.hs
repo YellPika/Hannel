@@ -1,3 +1,5 @@
+{-# LANGUAGE Safe #-}
+
 module Control.Concurrent.Process (
     Process (finish), with, withIO
 ) where

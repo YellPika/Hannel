@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE Safe #-}
 
 module Control.Concurrent.Event.Class (
     MonadEvent (liftEvent)

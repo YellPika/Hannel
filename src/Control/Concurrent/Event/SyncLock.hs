@@ -1,4 +1,5 @@
 {-# LANGUAGE DoAndIfThenElse #-}
+{-# LANGUAGE Safe #-}
 
 module Control.Concurrent.Event.SyncLock (
     SyncLock (), newSyncLock, isSynced, withAll
