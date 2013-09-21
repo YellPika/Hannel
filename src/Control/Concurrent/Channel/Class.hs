@@ -2,7 +2,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 
 module Control.Concurrent.Channel.Class (
-    Channel, swap, signal
+    Channel (swap), signal
 ) where
 
 import Control.Concurrent.Event.Base (Event)

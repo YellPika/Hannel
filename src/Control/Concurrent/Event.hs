@@ -1,11 +1,13 @@
 module Control.Concurrent.Event (
-    Event, sync, merge, threadID, tee, split
+    Event, sync, merge, threadID, tee, split,
+    module Control.Concurrent.Event.Class
 ) where
 
 import Control.Applicative ((<|>))
 import Control.Concurrent (ThreadId)
 import Control.Concurrent.Channel.Swap (newSwapChannel, swap, signalOther)
 import Control.Concurrent.Event.Base (Event, runEvent, newEvent)
+import Control.Concurrent.Event.Class
 import Control.Concurrent.Event.SyncLock (withAll)
 import Control.Concurrent.Event.Trail (newTrail, complete, commitSets)
 import Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar)

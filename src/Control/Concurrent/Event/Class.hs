@@ -2,7 +2,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 module Control.Concurrent.Event.Class (
-    MonadEvent, liftEvent
+    MonadEvent (liftEvent)
 ) where
 
 import Control.Concurrent.Event.Base (Event)

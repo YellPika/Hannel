@@ -1,5 +1,5 @@
 module Control.Concurrent.Process (
-    Process, finish, with, withIO
+    Process (finish), with, withIO
 ) where
 
 import Control.Concurrent.Event (Event, sync)

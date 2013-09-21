@@ -2,12 +2,12 @@
 {-# LANGUAGE FlexibleInstances #-}
 
 module Control.Concurrent.Channel.Round (
-    RoundChannel (), create
+    RoundChannel (), create, swap, signal
 ) where
 
 import Control.Applicative ((<$>), (<|>))
 import Control.Concurrent (ThreadId)
-import Control.Concurrent.Channel.Class (Channel, swap)
+import Control.Concurrent.Channel.Class (Channel, swap, signal)
 import Control.Concurrent.Channel.Swap (SwapChannel, newSwapChannel, other)
 import Control.Concurrent.Event.Base (Event)
 import Control.Monad (replicateM, forM, guard)
