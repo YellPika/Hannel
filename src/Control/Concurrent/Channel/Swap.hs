@@ -1,19 +1,17 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
 
-module Control.Concurrent.SwapChannel (
+module Control.Concurrent.Channel.Swap (
     SwapChannel (), newSwapChannel, other,
     swap, signal, swapOther, signalOther
 ) where
 
+import Control.Concurrent.Channel.Class (Channel, swap, signal)
+import Control.Concurrent.Event.Base (Event, EventHandler, newEvent)
+import Control.Concurrent.Event.Trail (Trail, TrailElement (Swap), extend, isActive, isCoherent)
 import Control.Concurrent.MVar (MVar, newMVar, withMVar)
 import Control.Monad (filterM, forM_, void, when)
 import Data.IORef (IORef, newIORef, readIORef, writeIORef, modifyIORef)
-
-import Control.Concurrent.Channel (Channel, swap, signal)
-import Control.Concurrent.Event.Base (Event, EventHandler, newEvent)
-import Control.Concurrent.Event.Trail (Trail, TrailElement (Swap),
-                                       extend, isActive, isCoherent)
 
 type SwapData i o = (Trail, EventHandler o, i)
 

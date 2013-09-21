@@ -4,16 +4,16 @@ module Control.Concurrent.Event (
 
 import Control.Applicative ((<|>))
 import Control.Concurrent (ThreadId)
-import Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar)
-import Control.Monad (msum, void)
-import Control.Monad.Trans (MonadIO, liftIO)
+import Control.Concurrent.Channel.Swap (newSwapChannel, swap, signalOther)
 import Control.Concurrent.Event.Base (Event, runEvent, newEvent)
 import Control.Concurrent.Event.SyncLock (withAll)
 import Control.Concurrent.Event.Trail (newTrail, complete, commitSets)
-import Control.Concurrent.SwapChannel (newSwapChannel, swap, signalOther)
+import Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar)
+import Control.Monad (msum, void)
+import Control.Monad.Trans (MonadIO, liftIO)
+
 import qualified Control.Concurrent.Event.Trail as Trail
 import qualified Data.Map as Map
-
 
 -- Blocks the current thread until the specified event yields a value.
 sync :: MonadIO m => Event a -> m a

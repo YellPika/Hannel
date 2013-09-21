@@ -12,14 +12,17 @@ cabal-version:       >=1.8
 
 library
   exposed-modules:     Control.Concurrent.Channel,
+                       Control.Concurrent.Channel.Class,
+                       Control.Concurrent.Channel.Round,
+                       Control.Concurrent.Channel.Swap,
                        Control.Concurrent.Event,
                        Control.Concurrent.Event.Class,
-                       Control.Concurrent.Process,
-                       Control.Concurrent.RoundChannel,
-                       Control.Concurrent.SwapChannel
+                       Control.Concurrent.Process
+
   other-modules:       Control.Concurrent.Event.Base,
                        Control.Concurrent.Event.SyncLock,
                        Control.Concurrent.Event.Trail
+
   build-depends:       base >= 4 && < 5, array, containers, mtl, random
   hs-source-dirs:      src
   ghc-options:         -O2 -Wall -threaded

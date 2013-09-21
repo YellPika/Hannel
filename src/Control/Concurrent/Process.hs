@@ -2,8 +2,8 @@ module Control.Concurrent.Process (
     Process, finish, with, withIO
 ) where
 
-import Control.Exception (bracket)
 import Control.Concurrent.Event (Event, sync)
+import Control.Exception (bracket)
 
 -- |Represents a process that runs in a separate thread.
 class Process a where

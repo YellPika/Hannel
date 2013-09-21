@@ -12,6 +12,7 @@ import Control.Monad.List (ListT (..))
 import Data.IORef (IORef, readIORef, atomicModifyIORef) 
 import Data.List (isSuffixOf)
 import Data.Map (Map)
+
 import qualified Data.Map as Map
 
 import Control.Concurrent.Event.SyncLock (SyncLock, newSyncLock, isSynced)

@@ -1,17 +1,17 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
 
-module Control.Concurrent.RoundChannel (
+module Control.Concurrent.Channel.Round (
     RoundChannel (), create
 ) where
 
 import Control.Applicative ((<$>), (<|>))
 import Control.Concurrent (ThreadId)
+import Control.Concurrent.Channel.Class (Channel, swap)
+import Control.Concurrent.Channel.Swap (SwapChannel, newSwapChannel, other)
+import Control.Concurrent.Event.Base (Event)
 import Control.Monad (replicateM, forM, guard)
 
-import Control.Concurrent.Channel (Channel, swap)
-import Control.Concurrent.Event.Base (Event)
-import Control.Concurrent.SwapChannel (SwapChannel, newSwapChannel, other)
 import qualified Control.Concurrent.Event as Event
 
 data RoundChannel a = RoundChannel Int (SwapChannel () (a, ThreadId, SwapChannel [a] ()))
