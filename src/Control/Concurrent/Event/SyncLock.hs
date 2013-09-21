@@ -1,7 +1,7 @@
 {-# LANGUAGE DoAndIfThenElse #-}
 
-module Control.Concurrent.Hannel.Internal.SyncLock (
-    SyncLock (), create, isSynced, withAll
+module Control.Concurrent.Event.SyncLock (
+    SyncLock (), newSyncLock, isSynced, withAll
 ) where
 
 import Control.Concurrent.MVar (MVar, newMVar, putMVar, takeMVar)
@@ -24,8 +24,8 @@ instance Eq SyncLock where
 instance Ord SyncLock where
     compare x y = compare (identifier x) (identifier y)
 
-create :: IO SyncLock
-create = do
+newSyncLock :: IO SyncLock
+newSyncLock = do
     identifier' <- newUnique
     status' <- newMVar False
     synced' <- newIORef False

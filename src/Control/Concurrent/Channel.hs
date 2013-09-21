@@ -1,11 +1,11 @@
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE FlexibleContexts #-}
 
-module Control.Concurrent.Hannel.Internal.Channel (
+module Control.Concurrent.Channel (
     Channel, swap, signal
 ) where
 
-import Control.Concurrent.Hannel.Internal.Event (Event)
+import Control.Concurrent.Event.Base (Event)
 
 -- |Provides an interface for synchronously sending and receiving values.
 class Channel c i o | c -> i o where

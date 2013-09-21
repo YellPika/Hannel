@@ -1,19 +1,19 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
 
-module Control.Concurrent.Hannel.Internal.SwapChannel (
-    SwapChannel (), create, other
+module Control.Concurrent.SwapChannel (
+    SwapChannel (), newSwapChannel, other,
+    swap, signal, swapOther, signalOther
 ) where
 
 import Control.Concurrent.MVar (MVar, newMVar, withMVar)
 import Control.Monad (filterM, forM_, void, when)
 import Data.IORef (IORef, newIORef, readIORef, writeIORef, modifyIORef)
 
-import Control.Concurrent.Hannel.Channel (Channel, swap)
-import Control.Concurrent.Hannel.Internal.Event (Event, EventHandler)
-import Control.Concurrent.Hannel.Internal.Trail (Trail, TrailElement (Swap))
-import qualified Control.Concurrent.Hannel.Internal.Event as Event
-import qualified Control.Concurrent.Hannel.Internal.Trail as Trail
+import Control.Concurrent.Channel (Channel, swap, signal)
+import Control.Concurrent.Event.Base (Event, EventHandler, newEvent)
+import Control.Concurrent.Event.Trail (Trail, TrailElement (Swap),
+                                       extend, isActive, isCoherent)
 
 type SwapData i o = (Trail, EventHandler o, i)
 
@@ -25,8 +25,8 @@ data SwapChannel f b = SwapChannel {
 }
 
 -- |Creates a new synchronous channel.
-create :: Event (SwapChannel i o)
-create = Event.create $ \trail handler -> do
+newSwapChannel :: Event (SwapChannel i o)
+newSwapChannel = newEvent $ \trail handler -> do
     lock' <- newMVar ()
     front' <- newIORef []
     back' <- newIORef []
@@ -40,7 +40,7 @@ other channel = channel { front = back channel, back = front channel }
 
 -- |Swaps a value with the other side of a channel.
 instance Channel (SwapChannel f b) f b where
-    swap channel value = Event.create $ \trail handler -> do
+    swap channel value = newEvent $ \trail handler -> do
         remaining <- withMVar (lock channel) $ \_ -> do
             -- Enqueue the swap data on the front queue for future swappers.
             modifyIORef (front channel) (++ [(trail, handler, value)])
@@ -52,18 +52,26 @@ instance Channel (SwapChannel f b) f b where
 
         forM_ remaining $ \(trail', handler', value') ->
             -- Incoherent trails will never commit anyways.
-            when (Trail.isCoherent trail trail') $ do
+            when (isCoherent trail trail') $ do
                 ref1 <- newIORef []
                 ref2 <- newIORef []
 
-                handler value' $ Trail.extend trail $ Swap trail' ref1 ref2
-                handler' value $ Trail.extend trail' $ Swap trail ref2 ref1
+                handler value' $ extend trail $ Swap trail' ref1 ref2
+                handler' value $ extend trail' $ Swap trail ref2 ref1
 
 -- Removes inactive trails, and returns the remaining.
 clean :: IORef [SwapData i o] -> IO [SwapData i o]
 clean queue = do
     value <- readIORef queue
-    remaining <- filterM (\(trail, _, _) -> Trail.isActive trail) value
+    remaining <- filterM (\(trail, _, _) -> isActive trail) value
     writeIORef queue remaining
 
     return remaining
+
+-- |Swaps a value with this side of a channel.
+swapOther :: SwapChannel f b -> b -> Event f
+swapOther = swap . other
+
+-- |Receives a value from this side of a channel.
+signalOther :: SwapChannel f () -> Event f
+signalOther = signal . other

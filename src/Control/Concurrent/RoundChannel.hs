@@ -1,7 +1,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
 
-module Control.Concurrent.Hannel.RoundChannel (
+module Control.Concurrent.RoundChannel (
     RoundChannel (), create
 ) where
 
@@ -9,16 +9,15 @@ import Control.Applicative ((<$>), (<|>))
 import Control.Concurrent (ThreadId)
 import Control.Monad (replicateM, forM, guard)
 
-import Control.Concurrent.Hannel.Channel (Channel, swap)
-import Control.Concurrent.Hannel.Event (Event)
-import Control.Concurrent.Hannel.SwapChannel (SwapChannel, other)
-import qualified Control.Concurrent.Hannel.Event as Event
-import qualified Control.Concurrent.Hannel.SwapChannel as SwapChannel
+import Control.Concurrent.Channel (Channel, swap)
+import Control.Concurrent.Event.Base (Event)
+import Control.Concurrent.SwapChannel (SwapChannel, newSwapChannel, other)
+import qualified Control.Concurrent.Event as Event
 
 data RoundChannel a = RoundChannel Int (SwapChannel () (a, ThreadId, SwapChannel [a] ()))
 
 create :: Int -> Event (RoundChannel a)
-create count = RoundChannel count <$> SwapChannel.create
+create count = RoundChannel count <$> newSwapChannel
 
 instance Channel (RoundChannel a) a [a] where
     swap channel value = client' <|> server'
@@ -28,7 +27,7 @@ instance Channel (RoundChannel a) a [a] where
 
 client :: RoundChannel a -> a -> Event [a]
 client (RoundChannel _ channel) value = do
-    response <- SwapChannel.create
+    response <- newSwapChannel
     threadID <- Event.threadID
     swap (other channel) (value, threadID, response)
     swap (other response) ()

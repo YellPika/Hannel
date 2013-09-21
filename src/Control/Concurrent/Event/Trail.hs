@@ -1,6 +1,6 @@
-module Control.Concurrent.Hannel.Internal.Trail (
+module Control.Concurrent.Event.Trail (
     Trail (), TrailElement (..),
-    create, extend, complete,
+    newTrail, extend, complete,
     commitSets, threadID,
     isActive, isCoherent
 ) where
@@ -14,8 +14,7 @@ import Data.List (isSuffixOf)
 import Data.Map (Map)
 import qualified Data.Map as Map
 
-import Control.Concurrent.Hannel.Internal.SyncLock (SyncLock)
-import qualified Control.Concurrent.Hannel.Internal.SyncLock as SyncLock
+import Control.Concurrent.Event.SyncLock (SyncLock, newSyncLock, isSynced)
 
 data TrailElement
     = Choose Integer
@@ -36,9 +35,9 @@ type CompleteTrail = (Trail, IO ())
 type CompletionRef = IORef [CompleteTrail]
 type CommitSet = Map SyncLock CompleteTrail
 
-create :: IO Trail
-create = do
-    syncLock' <- SyncLock.create
+newTrail :: IO Trail
+newTrail = do
+    syncLock' <- newSyncLock
     threadID' <- myThreadId
     return Trail {
         syncLock = syncLock',
@@ -62,12 +61,12 @@ complete trail action = do
     register _ = return ()
 
 isActive :: Trail -> IO Bool
-isActive = allM (fmap not . SyncLock.isSynced . syncLock) . dependencies
+isActive = allM (fmap not . isSynced . syncLock) . dependencies
 
 commitSets :: CompleteTrail -> IO [CommitSet]
 commitSets completeValue@(trail, _) = runListT $ do
     let lock = syncLock trail
-    synced <- liftIO $ SyncLock.isSynced lock
+    synced <- liftIO $ isSynced lock
     guard $ not synced
 
     commitSets' trail $ Map.singleton lock completeValue
@@ -81,7 +80,7 @@ commitSets' trail@(Trail _ (_:xs) _) set = do
 updateTrailMap :: Trail -> CommitSet -> ListT IO CommitSet
 updateTrailMap trail@(Trail _ (Swap swapTrail ref1 ref2 : xs) _) set = do
     let swapLock = syncLock swapTrail
-    synced <- liftIO $ SyncLock.isSynced swapLock
+    synced <- liftIO $ isSynced swapLock
     guard $ not synced
 
     case Map.lookup swapLock set of
