@@ -9,7 +9,7 @@ import Control.Concurrent (ThreadId, myThreadId)
 import Control.Monad (guard)
 import Control.Monad.Trans (liftIO)
 import Control.Monad.List (ListT (..))
-import Data.IORef (IORef, readIORef, atomicModifyIORef) 
+import Data.IORef (IORef, readIORef, atomicModifyIORef)
 import Data.List (isSuffixOf)
 import Data.Map (Map)
 

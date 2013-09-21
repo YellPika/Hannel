@@ -32,7 +32,7 @@ sync event = liftIO $ do
                 let assocs = Map.assocs xs
                     locks = map fst assocs
                     actions = map (snd . snd) assocs in
-                    
+
                 void $ withAll locks $ sequence_ actions
 
     takeMVar output
@@ -72,7 +72,7 @@ tee event = do
             swap channel x
             return x
         output = client <|> server
-    
+
     return (output, output)
 
 -- |Splits an event into a user defined number of events that will be
