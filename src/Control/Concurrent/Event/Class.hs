@@ -15,5 +15,8 @@ class MonadPlus m => MonadEvent m where
     -- |Lifts an event into a computation.
     liftEvent :: Event a -> m a
 
+instance MonadEvent Event where
+    liftEvent = id
+
 instance (MonadTrans t, MonadEvent m, MonadPlus (t m)) => MonadEvent (t m) where
     liftEvent = lift . liftEvent
