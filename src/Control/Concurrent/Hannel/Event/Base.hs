@@ -1,12 +1,12 @@
 {-# LANGUAGE DoAndIfThenElse #-}
 {-# LANGUAGE Safe #-}
 
-module Control.Concurrent.Event.Base (
+module Control.Concurrent.Hannel.Event.Base (
     Event (), EventHandler, runEvent, newEvent
 ) where
 
 import Control.Applicative (Applicative, Alternative, empty, (<|>), pure, (<*>))
-import Control.Concurrent.Event.Trail (Trail, TrailElement (..), isActive, extend)
+import Control.Concurrent.Hannel.Event.Trail (Trail, TrailElement (..), isActive, extend)
 import Control.Monad (MonadPlus, mzero, mplus, ap, forM, foldM_, when)
 import Data.Array.IO.Safe (IOArray, newListArray, readArray, writeArray)
 import System.Random (randomRIO)

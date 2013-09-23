@@ -2,14 +2,14 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE Safe #-}
 
-module Control.Concurrent.Channel.Swap (
+module Control.Concurrent.Hannel.Channel.Swap (
     SwapChannel (), newSwapChannel, other,
     swap, signal, swapOther, signalOther
 ) where
 
-import Control.Concurrent.Channel.Class (Channel, swap, signal)
-import Control.Concurrent.Event.Base (Event, EventHandler, newEvent)
-import Control.Concurrent.Event.Trail (Trail, TrailElement (Swap), extend, isActive, isCoherent)
+import Control.Concurrent.Hannel.Channel.Class (Channel, swap, signal)
+import Control.Concurrent.Hannel.Event.Base (Event, EventHandler, newEvent)
+import Control.Concurrent.Hannel.Event.Trail (Trail, TrailElement (Swap), extend, isActive, isCoherent)
 import Control.Concurrent.MVar (MVar, newMVar, withMVar)
 import Control.Monad (filterM, forM_, void, when)
 import Data.IORef (IORef, newIORef, readIORef, writeIORef, modifyIORef)

@@ -1,23 +1,23 @@
 {-# LANGUAGE Safe #-}
 
-module Control.Concurrent.Event (
+module Control.Concurrent.Hannel.Event (
     Event, sync, merge, syncID, forkEvent, tee, split,
-    module Control.Concurrent.Event.Class
+    module Control.Concurrent.Hannel.Event.Class
 ) where
 
 import Control.Applicative ((<|>))
 import Control.Concurrent (forkIO)
-import Control.Concurrent.Channel.Swap (newSwapChannel, swap, signal, signalOther)
-import Control.Concurrent.Event.Base (Event, runEvent, newEvent)
-import Control.Concurrent.Event.Class
-import Control.Concurrent.Event.SyncLock (withAll)
-import Control.Concurrent.Event.Trail (Trail, newTrail, complete, commitSets)
+import Control.Concurrent.Hannel.Channel.Swap (newSwapChannel, swap, signal, signalOther)
+import Control.Concurrent.Hannel.Event.Base (Event, runEvent, newEvent)
+import Control.Concurrent.Hannel.Event.Class
+import Control.Concurrent.Hannel.Event.SyncLock (withAll)
+import Control.Concurrent.Hannel.Event.Trail (Trail, newTrail, complete, commitSets)
 import Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar)
 import Control.Monad (msum, void)
 import Control.Monad.Trans (MonadIO, liftIO)
 import Data.Unique (Unique)
 
-import qualified Control.Concurrent.Event.Trail as Trail
+import qualified Control.Concurrent.Hannel.Event.Trail as Trail
 import qualified Data.Map as Map
 
 -- Blocks the current thread until the specified event yields a value.
