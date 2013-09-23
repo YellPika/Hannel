@@ -1,24 +1,26 @@
-{-# LANGUAGE Safe #-}
+{-# LANGUAGE DoAndIfThenElse #-}
+{-# LANGUAGE Trustworthy #-}
 
 module Control.Concurrent.Hannel.Event (
-    Event, sync, merge, syncID, forkEvent, tee, split,
+    Event, sync, merge, syncID, tee, split,
+    forkEvent, delayUntil, delayFor, timeoutAt, timeout,
     module Control.Concurrent.Hannel.Event.Class
 ) where
 
-import Control.Applicative ((<|>))
-import Control.Concurrent (forkIO)
-import Control.Concurrent.Hannel.Channel.Swap (newSwapChannel, swap, signal, signalOther)
-import Control.Concurrent.Hannel.Event.Base (Event, runEvent, newEvent)
-import Control.Concurrent.Hannel.Event.Class
-import Control.Concurrent.Hannel.Event.SyncLock (withAll)
-import Control.Concurrent.Hannel.Event.Trail (Trail, newTrail, complete, commitSets)
-import Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar)
-import Control.Monad (msum, void)
-import Control.Monad.Trans (MonadIO, liftIO)
-import Data.Unique (Unique)
+import safe Control.Concurrent (forkIO, yield)
+import safe Control.Concurrent.Hannel.Channel.Swap (newSwapChannel, swap, signal, signalOther)
+import safe Control.Concurrent.Hannel.Event.Base (Event, runEvent, newEvent)
+import safe Control.Concurrent.Hannel.Event.Class
+import safe Control.Concurrent.Hannel.Event.SyncLock (withAll)
+import safe Control.Concurrent.Hannel.Event.Trail (Trail, newTrail, complete, commitSets)
+import safe Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar)
+import safe Control.Monad (mplus, msum, void)
+import safe Control.Monad.Trans (MonadIO, liftIO)
+import Data.Time.Clock (NominalDiffTime, UTCTime, getCurrentTime, addUTCTime)
+import safe Data.Unique (Unique)
 
-import qualified Control.Concurrent.Hannel.Event.Trail as Trail
-import qualified Data.Map as Map
+import safe qualified Control.Concurrent.Hannel.Event.Trail as Trail
+import safe qualified Data.Map as Map
 
 -- Blocks the current thread until the specified event yields a value.
 sync :: MonadIO m => Event a -> m a
@@ -50,20 +52,51 @@ syncHandler action value trail = do
 forkEvent :: Event a -> (a -> IO ()) -> Event Unique
 forkEvent event action = do
     channel <- newSwapChannel
-    output <- forkEvent' (signalOther channel >> event) action
+    output <- unsafeLiftIO $ do
+        emptyTrail <- newTrail
+        let event' = signalOther channel >> event
+        runEvent event' emptyTrail $ syncHandler (void . forkIO . action)
+        return $ Trail.syncID emptyTrail
     signal channel
     return output
-
-forkEvent' :: Event a -> (a -> IO ()) -> Event Unique
-forkEvent' event action = newEvent $ \trail handler -> do
-    emptyTrail <- newTrail
-    runEvent event emptyTrail $ syncHandler (void . forkIO . action)
-    handler (Trail.syncID emptyTrail) trail
 
 -- |An event that returns a unique identifier for the initial sync operation.
 syncID :: Event Unique
 syncID = newEvent $ \trail handler ->
     handler (Trail.syncID trail) trail
+
+-- |Behaves like return, but waits the specified
+-- time before the event becomes available.
+delayUntil :: UTCTime -> a -> Event a
+delayUntil time value = newEvent $ \trail handler ->
+    void $ forkIO $ do
+        let wait = do
+            current <- getCurrentTime
+            if current <= time
+            then yield >> wait
+            else handler value trail
+
+        wait
+
+-- |Behaves like return, but waits for the specified interval of time
+-- after synchronization begins before the event becomes available.
+delayFor :: NominalDiffTime -> a -> Event a
+delayFor interval value = do
+    start <- unsafeLiftIO getCurrentTime
+    delayUntil (addUTCTime interval start) value
+
+-- |Defines an event that times out at a specific time.
+timeoutAt :: UTCTime -> Event a -> Event (Maybe a)
+timeoutAt time = mplus (delayUntil time Nothing) . fmap Just
+
+-- |Defines an event that times out after a certain interval of time.
+timeout :: NominalDiffTime -> Event a -> Event (Maybe a)
+timeout interval = mplus (delayFor interval Nothing) . fmap Just
+
+unsafeLiftIO :: IO a -> Event a
+unsafeLiftIO action = newEvent $ \trail handler -> do
+    value <- action
+    handler value trail
 
 -- |Merges a list of events. The resulting event will wait for all the source
 -- events to synchronize before returning a value. Unlike
@@ -94,7 +127,7 @@ tee event = do
             x <- event
             swap channel x
             return x
-        output = client <|> server
+        output = client `mplus` server
 
     return (output, output)
 
