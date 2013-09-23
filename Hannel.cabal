@@ -18,6 +18,7 @@ library
                        Control.Concurrent.Hannel.Event,
                        Control.Concurrent.Hannel.Event.Class,
                        Control.Concurrent.Hannel.Process,
+                       Control.Concurrent.Hannel.Var,
                        Control.Concurrent.Hannel.Var.Class,
                        Control.Concurrent.Hannel.Var.Mutable,
                        Control.Concurrent.Hannel.Var.Immutable
