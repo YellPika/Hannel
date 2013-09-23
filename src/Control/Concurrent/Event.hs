@@ -6,6 +6,7 @@ module Control.Concurrent.Event (
 ) where
 
 import Control.Applicative ((<|>))
+import Control.Concurrent (forkIO)
 import Control.Concurrent.Channel.Swap (newSwapChannel, swap, signal, signalOther)
 import Control.Concurrent.Event.Base (Event, runEvent, newEvent)
 import Control.Concurrent.Event.Class
@@ -43,18 +44,20 @@ syncHandler action value trail = do
 
             void $ withAll locks $ sequence_ actions
 
--- |Concurrently evaluates an event.
-forkEvent :: Event () -> Event Unique
-forkEvent event = do
+-- |Concurrently evaluates an event. The event will only synchronize when the
+-- returned event is synchronized. After synchronization, a new thread will be
+-- spawned for the specified action.
+forkEvent :: Event a -> (a -> IO ()) -> Event Unique
+forkEvent event action = do
     channel <- newSwapChannel
-    output <- forkEvent' (signalOther channel >> event)
+    output <- forkEvent' (signalOther channel >> event) action
     signal channel
     return output
 
-forkEvent' :: Event () -> Event Unique
-forkEvent' event = newEvent $ \trail handler -> do
+forkEvent' :: Event a -> (a -> IO ()) -> Event Unique
+forkEvent' event action = newEvent $ \trail handler -> do
     emptyTrail <- newTrail
-    runEvent event emptyTrail $ syncHandler $ const $ return ()
+    runEvent event emptyTrail $ syncHandler (void . forkIO . action)
     handler (Trail.syncID emptyTrail) trail
 
 -- |An event that returns a unique identifier for the initial sync operation.
