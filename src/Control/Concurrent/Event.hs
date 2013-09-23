@@ -1,12 +1,11 @@
 {-# LANGUAGE Safe #-}
 
 module Control.Concurrent.Event (
-    Event, sync, merge, threadID, tee, split,
+    Event, sync, merge, syncID, tee, split,
     module Control.Concurrent.Event.Class
 ) where
 
 import Control.Applicative ((<|>))
-import Control.Concurrent (ThreadId)
 import Control.Concurrent.Channel.Swap (newSwapChannel, swap, signalOther)
 import Control.Concurrent.Event.Base (Event, runEvent, newEvent)
 import Control.Concurrent.Event.Class
@@ -15,6 +14,7 @@ import Control.Concurrent.Event.Trail (newTrail, complete, commitSets)
 import Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar)
 import Control.Monad (msum, void)
 import Control.Monad.Trans (MonadIO, liftIO)
+import Data.Unique (Unique)
 
 import qualified Control.Concurrent.Event.Trail as Trail
 import qualified Data.Map as Map
@@ -41,10 +41,10 @@ sync event = liftIO $ do
 
     takeMVar output
 
--- |An event that returns the thread ID of the synchronizing thread.
-threadID :: Event ThreadId
-threadID = newEvent $ \trail handler ->
-    handler (Trail.threadID trail) trail
+-- |An event that returns a unique identifier for the initial sync operation.
+syncID :: Event Unique
+syncID = newEvent $ \trail handler ->
+    handler (Trail.syncID trail) trail
 
 -- |Merges a list of events. The resulting event will wait for all the source
 -- events to synchronize before returning a value. Unlike

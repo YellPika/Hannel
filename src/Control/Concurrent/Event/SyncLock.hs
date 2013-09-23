@@ -2,7 +2,7 @@
 {-# LANGUAGE Safe #-}
 
 module Control.Concurrent.Event.SyncLock (
-    SyncLock (), newSyncLock, isSynced, withAll
+    SyncLock (), newSyncLock, identifier, isSynced, withAll
 ) where
 
 import Control.Concurrent.MVar (MVar, newMVar, putMVar, takeMVar)

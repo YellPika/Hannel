@@ -3,21 +3,21 @@
 module Control.Concurrent.Event.Trail (
     Trail (), TrailElement (..),
     newTrail, extend, complete,
-    commitSets, threadID,
+    commitSets, syncID,
     isActive, isCoherent
 ) where
 
-import Control.Concurrent (ThreadId, myThreadId)
+import Control.Concurrent.Event.SyncLock (SyncLock, newSyncLock, isSynced, identifier)
 import Control.Monad (guard)
 import Control.Monad.Trans (liftIO)
 import Control.Monad.List (ListT (..))
 import Data.IORef (IORef, readIORef, atomicModifyIORef)
 import Data.List (isSuffixOf)
 import Data.Map (Map)
+import Data.Unique (Unique)
 
 import qualified Data.Map as Map
 
-import Control.Concurrent.Event.SyncLock (SyncLock, newSyncLock, isSynced)
 
 data TrailElement
     = Choose Integer
@@ -26,12 +26,11 @@ data TrailElement
 
 data Trail = Trail {
     syncLock :: SyncLock,
-    path :: Path,
-    threadID :: ThreadId
+    path :: Path
 }
 
 instance Eq Trail where
-    x == y = syncLock x == syncLock y &&path x == path y
+    x == y = syncLock x == syncLock y && path x == path y
 
 type Path = [TrailElement]
 type CompleteTrail = (Trail, IO ())
@@ -41,12 +40,7 @@ type CommitSet = Map SyncLock CompleteTrail
 newTrail :: IO Trail
 newTrail = do
     syncLock' <- newSyncLock
-    threadID' <- myThreadId
-    return Trail {
-        syncLock = syncLock',
-        path = [],
-        threadID = threadID'
-    }
+    return Trail { syncLock = syncLock', path = [] }
 
 extend :: Trail -> TrailElement -> Trail
 extend trail element = trail { path = element : path trail }
@@ -66,6 +60,9 @@ complete trail action = do
 isActive :: Trail -> IO Bool
 isActive = allM (fmap not . isSynced . syncLock) . dependencies
 
+syncID :: Trail -> Unique
+syncID = identifier . syncLock
+
 commitSets :: CompleteTrail -> IO [CommitSet]
 commitSets completeValue@(trail, _) = runListT $ do
     let lock = syncLock trail
@@ -75,13 +72,13 @@ commitSets completeValue@(trail, _) = runListT $ do
     commitSets' trail $ Map.singleton lock completeValue
 
 commitSets' :: Trail -> CommitSet -> ListT IO CommitSet
-commitSets' (Trail _ [] _) set = return set
-commitSets' trail@(Trail _ (_:xs) _) set = do
+commitSets' (Trail _ []) set = return set
+commitSets' trail@(Trail _ (_:xs)) set = do
     set' <- updateTrailMap trail set
     commitSets' (trail { path = xs }) set'
 
 updateTrailMap :: Trail -> CommitSet -> ListT IO CommitSet
-updateTrailMap trail@(Trail _ (Swap swapTrail ref1 ref2 : xs) _) set = do
+updateTrailMap trail@(Trail _ (Swap swapTrail ref1 ref2 : xs)) set = do
     let swapLock = syncLock swapTrail
     synced <- liftIO $ isSynced swapLock
     guard $ not synced
