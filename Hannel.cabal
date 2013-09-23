@@ -17,7 +17,10 @@ library
                        Control.Concurrent.Hannel.Channel.Swap,
                        Control.Concurrent.Hannel.Event,
                        Control.Concurrent.Hannel.Event.Class,
-                       Control.Concurrent.Hannel.Process
+                       Control.Concurrent.Hannel.Process,
+                       Control.Concurrent.Hannel.Var.Class,
+                       Control.Concurrent.Hannel.Var.Mutable,
+                       Control.Concurrent.Hannel.Var.Immutable
 
   other-modules:       Control.Concurrent.Hannel.Event.Base,
                        Control.Concurrent.Hannel.Event.SyncLock,
