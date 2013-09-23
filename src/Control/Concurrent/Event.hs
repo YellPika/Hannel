@@ -1,16 +1,16 @@
 {-# LANGUAGE Safe #-}
 
 module Control.Concurrent.Event (
-    Event, sync, merge, syncID, tee, split,
+    Event, sync, merge, syncID, forkEvent, tee, split,
     module Control.Concurrent.Event.Class
 ) where
 
 import Control.Applicative ((<|>))
-import Control.Concurrent.Channel.Swap (newSwapChannel, swap, signalOther)
+import Control.Concurrent.Channel.Swap (newSwapChannel, swap, signal, signalOther)
 import Control.Concurrent.Event.Base (Event, runEvent, newEvent)
 import Control.Concurrent.Event.Class
 import Control.Concurrent.Event.SyncLock (withAll)
-import Control.Concurrent.Event.Trail (newTrail, complete, commitSets)
+import Control.Concurrent.Event.Trail (Trail, newTrail, complete, commitSets)
 import Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar)
 import Control.Monad (msum, void)
 import Control.Monad.Trans (MonadIO, liftIO)
@@ -25,21 +25,37 @@ sync event = liftIO $ do
     emptyTrail <- newTrail
     output <- newEmptyMVar
 
-    runEvent event emptyTrail $ \value trail -> do
-        completeValue <- complete trail $ putMVar output value
-        commitSet <- commitSets completeValue
-
-        case commitSet of
-            [] -> return ()
-            xs:_ ->
-                -- Each assoc will be in the form (lock, (trail, action)).
-                let assocs = Map.assocs xs
-                    locks = map fst assocs
-                    actions = map (snd . snd) assocs in
-
-                void $ withAll locks $ sequence_ actions
-
+    runEvent event emptyTrail $ syncHandler $ putMVar output
     takeMVar output
+
+syncHandler :: (a -> IO ()) -> a -> Trail -> IO ()
+syncHandler action value trail = do
+    completeValue <- complete trail $ action value
+    commitSet <- commitSets completeValue
+
+    case commitSet of
+        [] -> return ()
+        xs:_ ->
+            -- Each assoc will be in the form (lock, (trail, action)).
+            let assocs = Map.assocs xs
+                locks = map fst assocs
+                actions = map (snd . snd) assocs in
+
+            void $ withAll locks $ sequence_ actions
+
+-- |Concurrently evaluates an event.
+forkEvent :: Event () -> Event Unique
+forkEvent event = do
+    channel <- newSwapChannel
+    output <- forkEvent' (signalOther channel >> event)
+    signal channel
+    return output
+
+forkEvent' :: Event () -> Event Unique
+forkEvent' event = newEvent $ \trail handler -> do
+    emptyTrail <- newTrail
+    runEvent event emptyTrail $ syncHandler $ const $ return ()
+    handler (Trail.syncID emptyTrail) trail
 
 -- |An event that returns a unique identifier for the initial sync operation.
 syncID :: Event Unique
