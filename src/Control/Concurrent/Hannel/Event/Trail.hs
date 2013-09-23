@@ -18,7 +18,6 @@ import Data.Unique (Unique)
 
 import qualified Data.Map as Map
 
-
 data TrailElement
     = Choose Integer
     | Swap Trail CompletionRef CompletionRef
