@@ -3,9 +3,10 @@ module Control.Concurrent.Hannel.Var.Immutable (
 ) where
 
 import Control.Concurrent.Hannel.Channel.Swap (SwapChannel, newSwapChannel, swap, signal, swapOther, signalOther)
-import Control.Concurrent.Hannel.Event (Event, forkEvent, sync)
+import Control.Concurrent.Hannel.Event (Event, forkServer)
 import Control.Concurrent.Hannel.Var.Class (Var, putVar, takeVar)
-import Control.Monad (mplus, void)
+import Control.Monad (void)
+import Data.Functor ((<$>), (<$))
 
 -- |An IVar is a concurrent data structure that may either be full or empty.
 -- Once the IVar is full, it remains so for the remainder of its lifetime.
@@ -21,27 +22,11 @@ newIVar = do
     inChannel' <- newSwapChannel
     outChannel' <- newSwapChannel
 
-    let output = IVar inChannel' outChannel'
-        event = empty output
-    void $ forkEvent event $ loop output
-    return output
+    let step Nothing = Just <$> signal inChannel'
+        step (Just x) = Just x <$ swap outChannel' x
 
-full :: IVar a -> a -> Event (Maybe a)
-full var value = output `mplus` done
-  where
-    output = swap (outChannel var) value >> full var value
-    done = return $ Just value
-
-empty :: IVar a -> Event (Maybe a)
-empty var = input `mplus` done
-  where
-    input = signal (inChannel var) >>= full var
-    done = return Nothing
-
-loop :: IVar a -> Maybe a -> IO ()
-loop var value = sync' value >>= loop var
-  where
-    sync' = sync . maybe (empty var) (full var)
+    void $ forkServer Nothing step
+    return $ IVar inChannel' outChannel'
 
 -- |Writes a value to an IVar. If the IVar is already full,
 -- then this event blocks indefinitely.

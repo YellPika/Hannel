@@ -2,8 +2,10 @@
 {-# LANGUAGE Trustworthy #-}
 
 module Control.Concurrent.Hannel.Event (
-    Event, sync, merge, syncID, tee, split,
-    forkEvent, delayUntil, delayFor, timeoutAt, timeout,
+    Event, sync, syncID,
+    merge, tee, split,
+    forkEvent, forkServer,
+    delayUntil, delayFor, timeoutAt, timeout,
     module Control.Concurrent.Hannel.Event.Class
 ) where
 
@@ -22,7 +24,7 @@ import safe Data.Unique (Unique)
 import safe qualified Control.Concurrent.Hannel.Event.Trail as Trail
 import safe qualified Data.Map as Map
 
--- Blocks the current thread until the specified event yields a value.
+-- |Blocks the current thread until the specified event yields a value.
 sync :: MonadIO m => Event a -> m a
 sync event = liftIO $ do
     emptyTrail <- newTrail
@@ -59,6 +61,17 @@ forkEvent event action = do
         return $ Trail.syncID emptyTrail
     signal channel
     return output
+
+-- |Forks a new thread that continuously synchronizes on
+-- an event parametrized by a state value. The result of
+-- the event is fed back into itself as input.
+forkServer :: a -> (a -> Event a) -> Event Unique
+forkServer value step = forkEvent (return value `mplus` loopEvent value) loopIO
+  where
+    loopIO x = sync (loopEvent x) >>= loopIO
+    loopEvent x = do
+        x' <- step x
+        loopEvent x' `mplus` return x'
 
 -- |An event that returns a unique identifier for the initial sync operation.
 syncID :: Event Unique

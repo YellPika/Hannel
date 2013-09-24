@@ -3,9 +3,10 @@ module Control.Concurrent.Hannel.Var.Mutable (
 ) where
 
 import Control.Concurrent.Hannel.Channel.Swap (SwapChannel, newSwapChannel, swap, signal, swapOther, signalOther)
-import Control.Concurrent.Hannel.Event (Event, forkEvent, sync)
+import Control.Concurrent.Hannel.Event (Event, forkServer)
 import Control.Concurrent.Hannel.Var.Class (Var, putVar, takeVar)
-import Control.Monad (mplus, void)
+import Control.Monad (void)
+import Data.Functor ((<$>), (<$))
 
 -- |An MVar is a concurrent data structure that may either be full or empty.
 data MVar a = MVar {
@@ -26,32 +27,16 @@ newMVar' value  = do
     inChannel' <- newSwapChannel
     outChannel' <- newSwapChannel
 
-    let output = MVar inChannel' outChannel'
-        event = maybe (empty output) (full output) value
-    void $ forkEvent event $ loop output
-    return output
+    let step Nothing = Just <$> signal inChannel'
+        step (Just x) = Nothing <$ swap outChannel' x
 
-full :: MVar a -> a -> Event (Maybe a)
-full var value = output `mplus` done
-  where
-    output = swap (outChannel var) value >> empty var
-    done = return $ Just value
-
-empty :: MVar a -> Event (Maybe a)
-empty var = input `mplus` done
-  where
-    input = signal (inChannel var) >>= full var
-    done = return Nothing
-
-loop :: MVar a -> Maybe a -> IO ()
-loop var value = sync' value >>= loop var
-  where
-    sync' = sync . maybe (empty var) (full var)
+    void $ forkServer value step
+    return $ MVar inChannel' outChannel'
 
 -- |Writes a value to an MVar. If the MVar is already full,
 -- this event blocks until it is empty.
 putMVar :: MVar a -> a -> Event ()
-putMVar var = swapOther $ inChannel var
+putMVar = swapOther . inChannel
 
 -- |Removes a value from an MVar. If the MVar is empty,
 -- this event blocks until it is full.
