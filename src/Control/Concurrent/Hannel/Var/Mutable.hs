@@ -2,7 +2,7 @@ module Control.Concurrent.Hannel.Var.Mutable (
     MVar (), newMVar, newEmptyMVar, putMVar, takeMVar
 ) where
 
-import Control.Concurrent.Hannel.Channel.Swap (SwapChannel, newSwapChannel, swap, signal, swapOther, signalOther)
+import Control.Concurrent.Hannel.Channel.Swap (SwapChannel, newSwapChannel, sendFront, receiveFront, sendBack, receiveBack)
 import Control.Concurrent.Hannel.Event (Event, forkServer)
 import Control.Concurrent.Hannel.Var.Class (Var, putVar, takeVar)
 import Control.Monad (void)
@@ -27,8 +27,8 @@ newMVar' value  = do
     inChannel' <- newSwapChannel
     outChannel' <- newSwapChannel
 
-    let step Nothing = Just <$> signal inChannel'
-        step (Just x) = Nothing <$ swap outChannel' x
+    let step Nothing = Just <$> receiveFront inChannel'
+        step (Just x) = Nothing <$ sendFront outChannel' x
 
     void $ forkServer value step
     return $ MVar inChannel' outChannel'
@@ -36,12 +36,12 @@ newMVar' value  = do
 -- |Writes a value to an MVar. If the MVar is already full,
 -- this event blocks until it is empty.
 putMVar :: MVar a -> a -> Event ()
-putMVar = swapOther . inChannel
+putMVar = sendBack . inChannel
 
 -- |Removes a value from an MVar. If the MVar is empty,
 -- this event blocks until it is full.
 takeMVar :: MVar a -> Event a
-takeMVar = signalOther . outChannel
+takeMVar = receiveBack . outChannel
 
 instance Var MVar where
     putVar = putMVar

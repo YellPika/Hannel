@@ -10,7 +10,7 @@ module Control.Concurrent.Hannel.Event (
 ) where
 
 import safe Control.Concurrent (forkIO, yield)
-import safe Control.Concurrent.Hannel.Channel.Swap (newSwapChannel, swap, signal, signalOther)
+import safe Control.Concurrent.Hannel.Channel.Swap (newSwapChannel, sendFront, receiveBack, signalFront, signalBack)
 import safe Control.Concurrent.Hannel.Event.Base (Event, runEvent, newEvent)
 import safe Control.Concurrent.Hannel.Event.Class
 import safe Control.Concurrent.Hannel.Event.SyncLock (withAll)
@@ -56,11 +56,12 @@ forkEvent event action = do
     channel <- newSwapChannel
     output <- unsafeLiftIO $ do
         emptyTrail <- newTrail
-        let event' = signalOther channel >> event
-        runEvent event' emptyTrail $ syncHandler (void . forkIO . action)
+        runEvent (signalFront channel >> event) emptyTrail action'
         return $ Trail.syncID emptyTrail
-    signal channel
+    signalBack channel
     return output
+  where
+    action' = syncHandler (void . forkIO . action)
 
 -- |Forks a new thread that continuously synchronizes on
 -- an event parametrized by a state value. The result of
@@ -79,7 +80,7 @@ syncID = newEvent $ \trail handler ->
     handler (Trail.syncID trail) trail
 
 -- |Behaves like return, but waits the specified
--- time before the event becomes available.
+-- point in time before the event becomes available.
 delayUntil :: UTCTime -> a -> Event a
 delayUntil time value = newEvent $ \trail handler ->
     void $ forkIO $ do
@@ -135,10 +136,10 @@ tee :: Event a -> Event (Event a, Event a)
 tee event = do
     channel <- newSwapChannel
 
-    let client = signalOther channel
+    let client = receiveBack channel
         server = do
             x <- event
-            swap channel x
+            sendFront channel x
             return x
         output = client `mplus` server
 

@@ -2,7 +2,7 @@ module Control.Concurrent.Hannel.Var.Immutable (
     IVar (), newIVar, putIVar, takeIVar
 ) where
 
-import Control.Concurrent.Hannel.Channel.Swap (SwapChannel, newSwapChannel, swap, signal, swapOther, signalOther)
+import Control.Concurrent.Hannel.Channel.Swap (SwapChannel, newSwapChannel, sendFront, receiveFront, sendBack, receiveBack)
 import Control.Concurrent.Hannel.Event (Event, forkServer)
 import Control.Concurrent.Hannel.Var.Class (Var, putVar, takeVar)
 import Control.Monad (void)
@@ -22,8 +22,8 @@ newIVar = do
     inChannel' <- newSwapChannel
     outChannel' <- newSwapChannel
 
-    let step Nothing = Just <$> signal inChannel'
-        step (Just x) = Just x <$ swap outChannel' x
+    let step Nothing = Just <$> receiveFront inChannel'
+        step (Just x) = Just x <$ sendFront outChannel' x
 
     void $ forkServer Nothing step
     return $ IVar inChannel' outChannel'
@@ -31,12 +31,12 @@ newIVar = do
 -- |Writes a value to an IVar. If the IVar is already full,
 -- then this event blocks indefinitely.
 putIVar :: IVar a -> a -> Event ()
-putIVar = swapOther . inChannel
+putIVar = sendBack . inChannel
 
 -- |Reads a value from an IVar. If the IVar is empty,
 -- then this event blocks until it is full.
 takeIVar :: IVar a -> Event a
-takeIVar = signalOther . outChannel
+takeIVar = receiveBack . outChannel
 
 instance Var IVar where
     putVar = putIVar

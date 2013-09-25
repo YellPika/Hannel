@@ -1,13 +1,13 @@
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE Safe #-}
 
 module Control.Concurrent.Hannel.Channel.Swap (
-    SwapChannel (), newSwapChannel, other,
-    swap, signal, swapOther, signalOther
+    SwapChannel (), newSwapChannel,
+    swapFront, swapBack,
+    signalFront, signalBack,
+    sendFront, sendBack,
+    receiveFront, receiveBack
 ) where
 
-import Control.Concurrent.Hannel.Channel.Class (Channel, swap, signal)
 import Control.Concurrent.Hannel.Event.Base (Event, EventHandler, newEvent)
 import Control.Concurrent.Hannel.Event.Trail (Trail, TrailElement (Swap), extend, isActive, isCoherent)
 import Control.Concurrent.MVar (MVar, newMVar, withMVar)
@@ -33,30 +33,57 @@ newSwapChannel = newEvent $ \trail handler -> do
     let output = SwapChannel { lock = lock', front = front', back = back' }
     handler output trail
 
--- |Gets the other side of a channel.
-other :: SwapChannel f b -> SwapChannel b f
-other channel = channel { front = back channel, back = front channel }
+-- |Sends a value to the front side of a channel.
+sendBack :: SwapChannel () b -> b -> Event ()
+sendBack = swapBack
 
--- |Swaps a value with the other side of a channel.
-instance Channel (SwapChannel f b) f b where
-    swap channel value = newEvent $ \trail handler -> do
-        remaining <- withMVar (lock channel) $ \_ -> do
-            -- Enqueue the swap data on the front queue for future swappers.
-            modifyIORef (front channel) (++ [(trail, handler, value)])
+-- |Sends a value to the back side of a channel.
+sendFront :: SwapChannel f () -> f -> Event ()
+sendFront = swapFront
 
-            -- Cleaning helps prevent space leaks.
-            void $ clean $ front channel
-            clean $ back channel
+-- |Receives a value from the back side of a channel.
+receiveBack :: SwapChannel f () -> Event f
+receiveBack = flip swapBack ()
+
+-- |Receives a value from the front side of a channel.
+receiveFront :: SwapChannel () b -> Event b
+receiveFront = flip swapFront ()
+
+-- |Waits for the front side of a channel.
+signalBack :: SwapChannel () () -> Event ()
+signalBack = flip swapBack ()
+
+-- |Waits for the back side of a channel.
+signalFront :: SwapChannel () () -> Event ()
+signalFront = flip swapFront ()
+
+-- |Sends a value to and receives a value from the front side of a channel.
+swapBack :: SwapChannel f b -> b -> Event f
+swapBack channel = swapFront channel {
+    front = back channel,
+    back = front channel
+}
+
+-- |Sends a value to and receives a value from the back side of a channel.
+swapFront :: SwapChannel f b -> f -> Event b
+swapFront channel value = newEvent $ \trail handler -> do
+    remaining <- withMVar (lock channel) $ \_ -> do
+        -- Enqueue the swap data on the front queue for future swappers.
+        modifyIORef (front channel) (++ [(trail, handler, value)])
+
+        -- Cleaning helps prevent space leaks.
+        void $ clean $ front channel
+        clean $ back channel
 
 
-        forM_ remaining $ \(trail', handler', value') ->
-            -- Incoherent trails will never commit anyways.
-            when (isCoherent trail trail') $ do
-                ref1 <- newIORef []
-                ref2 <- newIORef []
+    forM_ remaining $ \(trail', handler', value') ->
+        -- Incoherent trails will never commit anyways.
+        when (isCoherent trail trail') $ do
+            ref1 <- newIORef []
+            ref2 <- newIORef []
 
-                handler value' $ extend trail $ Swap trail' ref1 ref2
-                handler' value $ extend trail' $ Swap trail ref2 ref1
+            handler value' $ extend trail $ Swap trail' ref1 ref2
+            handler' value $ extend trail' $ Swap trail ref2 ref1
 
 -- Removes inactive trails, and returns the remaining.
 clean :: IORef [SwapData i o] -> IO [SwapData i o]
@@ -66,11 +93,3 @@ clean queue = do
     writeIORef queue remaining
 
     return remaining
-
--- |Swaps a value with this side of a channel.
-swapOther :: SwapChannel f b -> b -> Event f
-swapOther = swap . other
-
--- |Receives a value from this side of a channel.
-signalOther :: SwapChannel f () -> Event f
-signalOther = signal . other
