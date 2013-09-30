@@ -6,9 +6,11 @@ module Control.Concurrent.Hannel.Event (
     merge, tee, split,
     forkEvent, forkServer,
     delayUntil, delayFor, timeoutAt, timeout,
+    ServerHandle, touchServerHandle, withServerHandle,
     module Control.Concurrent.Hannel.Event.Class
 ) where
 
+import safe Control.Applicative ((<|>), (<$>), (<$))
 import safe Control.Concurrent (forkIO, yield)
 import safe Control.Concurrent.Hannel.Channel.Swap (newSwapChannel, sendFront, receiveBack, signalFront, signalBack)
 import safe Control.Concurrent.Hannel.Event.Base (Event, runEvent, newEvent)
@@ -16,8 +18,11 @@ import safe Control.Concurrent.Hannel.Event.Class
 import safe Control.Concurrent.Hannel.Event.SyncLock (withAll)
 import safe Control.Concurrent.Hannel.Event.Trail (Trail, newTrail, complete, commitSets)
 import safe Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar)
-import safe Control.Monad (mplus, msum, void)
+import safe Control.Monad (msum, void)
 import safe Control.Monad.Trans (MonadIO, liftIO)
+import safe Foreign.Concurrent (newForeignPtr)
+import safe Foreign.ForeignPtr.Safe (ForeignPtr, touchForeignPtr)
+import safe Foreign.Marshal.Alloc (mallocBytes, free)
 import Data.Time.Clock (NominalDiffTime, UTCTime, getCurrentTime, addUTCTime)
 import safe Data.Unique (Unique)
 
@@ -63,16 +68,50 @@ forkEvent event action = do
   where
     action' = syncHandler (void . forkIO . action)
 
+-- |A handle associated with a server. When this handle goes out of scope,
+-- the associated server is terminated.
+newtype ServerHandle = ServerHandle (ForeignPtr ())
+  deriving Eq
+
+-- |Ensures that a server handle is not garbage collected.  
+touchServerHandle :: ServerHandle -> Event ()
+touchServerHandle (ServerHandle ptr) = unsafeLiftIO $ touchForeignPtr ptr
+
+-- |Associates a server handle with an event. The server handle will not be
+-- garbage collected until after the associated event is.
+withServerHandle :: ServerHandle -> Event a -> Event a
+withServerHandle handle event = touchServerHandle handle >> event
+
 -- |Forks a new thread that continuously synchronizes on
 -- an event parametrized by a state value. The result of
 -- the event is fed back into itself as input.
-forkServer :: a -> (a -> Event a) -> Event Unique
-forkServer value step = forkEvent (return value `mplus` loopEvent value) loopIO
-  where
-    loopIO x = sync (loopEvent x) >>= loopIO
-    loopEvent x = do
-        x' <- step x
-        loopEvent x' `mplus` return x'
+forkServer :: a -> (a -> Event a) -> Event (Unique, ServerHandle)
+forkServer value step = do
+    closeChannel <- newSwapChannel
+
+    let closeEvent = Nothing <$ signalFront closeChannel
+
+        loopIO (Just x) = sync (loopEvent x) >>= loopIO
+        loopIO Nothing = return ()
+
+        loopEvent x = closeEvent <|> do
+            x' <- step x
+            loopEvent x' <|> (return $ Just x')
+
+        initEvent = return (Just value) <|>
+                    loopEvent value <|>
+                    closeEvent
+
+    serverID <- forkEvent initEvent loopIO
+
+    handle <- unsafeLiftIO $ do
+        ptr <- mallocBytes 1
+        newForeignPtr ptr $ do
+            free ptr
+            putStrLn "Finalizing!"
+            sync $ signalBack closeChannel
+
+    return (serverID, ServerHandle handle)
 
 -- |An event that returns a unique identifier for the initial sync operation.
 syncID :: Event Unique
@@ -101,11 +140,11 @@ delayFor interval value = do
 
 -- |Defines an event that times out at a specific time.
 timeoutAt :: UTCTime -> Event a -> Event (Maybe a)
-timeoutAt time = mplus (delayUntil time Nothing) . fmap Just
+timeoutAt time event = (Just <$> event) <|> delayUntil time Nothing
 
 -- |Defines an event that times out after a certain interval of time.
 timeout :: NominalDiffTime -> Event a -> Event (Maybe a)
-timeout interval = mplus (delayFor interval Nothing) . fmap Just
+timeout interval event = (Just <$> event) <|> delayFor interval Nothing
 
 unsafeLiftIO :: IO a -> Event a
 unsafeLiftIO action = newEvent $ \trail handler -> do
@@ -141,7 +180,7 @@ tee event = do
             x <- event
             sendFront channel x
             return x
-        output = client `mplus` server
+        output = client <|> server
 
     return (output, output)
 
