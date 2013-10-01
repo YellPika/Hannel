@@ -2,12 +2,13 @@
 {-# LANGUAGE Safe #-}
 
 module Control.Concurrent.Hannel.Event.Base (
-    Event (), EventHandler, runEvent, newEvent
+    Event (), EventHandler, runEvent, newEvent, unsafeLiftIO
 ) where
 
 import Control.Applicative (Applicative, Alternative, empty, (<|>), pure, (<*>))
+import Control.Concurrent (forkIO)
 import Control.Concurrent.Hannel.Event.Trail (Trail, TrailElement (..), isActive, extend)
-import Control.Monad (MonadPlus, mzero, mplus, ap, forM, foldM_, when)
+import Control.Monad (MonadPlus, mzero, mplus, ap, forM, foldM_, void, when)
 import Data.Array.IO.Safe (IOArray, newListArray, readArray, writeArray)
 import System.Random (randomRIO)
 
@@ -30,7 +31,7 @@ runEvent :: Event a -> Trail -> EventHandler a -> IO ()
 runEvent (Event events) trail handler =
     shuffle events >>=
     foldM_ (\i x -> do
-        x (extend trail $ Choose i) handler
+        void $ forkIO $ x (extend trail $ Choose i) handler
         return $ i + 1) 0
 
 shuffle :: [a] -> IO [a]
@@ -46,6 +47,11 @@ shuffle xs = do
 
 newArray :: Int -> [a] -> IO (IOArray Int a)
 newArray n = newListArray (1, n)
+
+unsafeLiftIO :: IO a -> Event a
+unsafeLiftIO action = newEvent $ \trail handler -> do
+    value <- action
+    handler value trail
 
 instance Monad Event where
     return x = newEvent $ \trail handler ->

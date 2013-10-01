@@ -24,7 +24,9 @@ library
                        Control.Concurrent.Hannel.Var.Immutable
 
   other-modules:       Control.Concurrent.Hannel.Event.Base,
+                       Control.Concurrent.Hannel.Event.Sync,
                        Control.Concurrent.Hannel.Event.SyncLock,
+                       Control.Concurrent.Hannel.Event.Time,
                        Control.Concurrent.Hannel.Event.Trail
 
   build-depends:       base >= 4 && < 5, array, containers, mtl, random, time

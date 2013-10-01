@@ -3,7 +3,7 @@ module Control.Concurrent.Hannel.Channel.Buffer (
 ) where
 
 import Control.Applicative ((<|>), (<$>), (<$))
-import Control.Concurrent.Hannel.Channel.Swap (SwapChannel, newSwapChannel, sendFront, sendBack, receiveFront, receiveBack)
+import Control.Concurrent.Hannel.Channel.Swap (newSwapChannel, sendFront, sendBack, receiveFront, receiveBack)
 import Control.Concurrent.Hannel.Event (Event, forkServer, withServerHandle)
 import Data.Sequence ((|>), ViewL ((:<)))
 import qualified Data.Sequence as Seq
@@ -31,7 +31,7 @@ newBufferChannel = do
             Seq.EmptyL -> enqueue queue
             x :< xs -> enqueue queue <|> dequeue x xs
 
-    return $ BufferChannel {
+    return BufferChannel {
         putBufferChannel = withServerHandle handle . sendBack inChannel,
         takeBufferChannel = withServerHandle handle $ receiveBack outChannel
     }

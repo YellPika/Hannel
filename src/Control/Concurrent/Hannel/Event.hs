@@ -1,72 +1,30 @@
 {-# LANGUAGE DoAndIfThenElse #-}
-{-# LANGUAGE Trustworthy #-}
+{-# LANGUAGE Safe #-}
 
 module Control.Concurrent.Hannel.Event (
     Event, sync, syncID,
     merge, tee, split,
     forkEvent, forkServer,
-    delayUntil, delayFor, timeoutAt, timeout,
     ServerHandle, touchServerHandle, withServerHandle,
-    module Control.Concurrent.Hannel.Event.Class
+    module Control.Concurrent.Hannel.Event.Class,
+    module Control.Concurrent.Hannel.Event.Time
 ) where
 
-import safe Control.Applicative ((<|>), (<$>), (<$))
-import safe Control.Concurrent (forkIO, yield)
-import safe Control.Concurrent.Hannel.Channel.Swap (newSwapChannel, sendFront, receiveBack, signalFront, signalBack)
-import safe Control.Concurrent.Hannel.Event.Base (Event, runEvent, newEvent)
-import safe Control.Concurrent.Hannel.Event.Class
-import safe Control.Concurrent.Hannel.Event.SyncLock (withAll)
-import safe Control.Concurrent.Hannel.Event.Trail (Trail, newTrail, complete, commitSets)
-import safe Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar)
-import safe Control.Monad (msum, void)
-import safe Control.Monad.Trans (MonadIO, liftIO)
-import safe Foreign.Concurrent (newForeignPtr)
-import safe Foreign.ForeignPtr.Safe (ForeignPtr, touchForeignPtr)
-import safe Foreign.Marshal.Alloc (mallocBytes, free)
-import Data.Time.Clock (NominalDiffTime, UTCTime, getCurrentTime, addUTCTime)
-import safe Data.Unique (Unique)
+import Control.Applicative ((<|>), (<$))
+import Control.Concurrent (forkIO)
+import Control.Concurrent.Hannel.Channel.Swap (newSwapChannel, sendFront, receiveBack, signalFront, signalBack)
+import Control.Concurrent.Hannel.Event.Base (Event, runEvent, unsafeLiftIO)
+import Control.Concurrent.Hannel.Event.Class
+import Control.Concurrent.Hannel.Event.Sync (sync, syncHandler, syncID)
+import Control.Concurrent.Hannel.Event.Time
+import Control.Concurrent.Hannel.Event.Trail (newTrail)
+import Control.Monad (msum, void)
+import Foreign.Concurrent (newForeignPtr)
+import Foreign.ForeignPtr.Safe (ForeignPtr, touchForeignPtr)
+import Foreign.Marshal.Alloc (mallocBytes, free)
+import Data.Unique (Unique)
 
-import safe qualified Control.Concurrent.Hannel.Event.Trail as Trail
-import safe qualified Data.Map as Map
-
--- |Blocks the current thread until the specified event yields a value.
-sync :: MonadIO m => Event a -> m a
-sync event = liftIO $ do
-    emptyTrail <- newTrail
-    output <- newEmptyMVar
-
-    runEvent event emptyTrail $ syncHandler $ putMVar output
-    takeMVar output
-
-syncHandler :: (a -> IO ()) -> a -> Trail -> IO ()
-syncHandler action value trail = do
-    completeValue <- complete trail $ action value
-    commitSet <- commitSets completeValue
-
-    case commitSet of
-        [] -> return ()
-        xs:_ ->
-            -- Each assoc will be in the form (lock, (trail, action)).
-            let assocs = Map.assocs xs
-                locks = map fst assocs
-                actions = map (snd . snd) assocs in
-
-            void $ withAll locks $ sequence_ actions
-
--- |Concurrently evaluates an event. The event will only synchronize when the
--- returned event is synchronized. After synchronization, a new thread will be
--- spawned for the specified action.
-forkEvent :: Event a -> (a -> IO ()) -> Event Unique
-forkEvent event action = do
-    channel <- newSwapChannel
-    output <- unsafeLiftIO $ do
-        emptyTrail <- newTrail
-        runEvent (signalFront channel >> event) emptyTrail action'
-        return $ Trail.syncID emptyTrail
-    signalBack channel
-    return output
-  where
-    action' = syncHandler (void . forkIO . action)
+import qualified Control.Concurrent.Hannel.Event.Trail as Trail
 
 -- |A handle associated with a server. When this handle goes out of scope,
 -- the associated server is terminated.
@@ -96,7 +54,7 @@ forkServer value step = do
 
         loopEvent x = closeEvent <|> do
             x' <- step x
-            loopEvent x' <|> (return $ Just x')
+            loopEvent x' <|> return (Just x')
 
         initEvent = return (Just value) <|>
                     loopEvent value <|>
@@ -113,43 +71,20 @@ forkServer value step = do
 
     return (serverID, ServerHandle handle)
 
--- |An event that returns a unique identifier for the initial sync operation.
-syncID :: Event Unique
-syncID = newEvent $ \trail handler ->
-    handler (Trail.syncID trail) trail
-
--- |Behaves like return, but waits the specified
--- point in time before the event becomes available.
-delayUntil :: UTCTime -> a -> Event a
-delayUntil time value = newEvent $ \trail handler ->
-    void $ forkIO $ do
-        let wait = do
-            current <- getCurrentTime
-            if current <= time
-            then yield >> wait
-            else handler value trail
-
-        wait
-
--- |Behaves like return, but waits for the specified interval of time
--- after synchronization begins before the event becomes available.
-delayFor :: NominalDiffTime -> a -> Event a
-delayFor interval value = do
-    start <- unsafeLiftIO getCurrentTime
-    delayUntil (addUTCTime interval start) value
-
--- |Defines an event that times out at a specific time.
-timeoutAt :: UTCTime -> Event a -> Event (Maybe a)
-timeoutAt time event = (Just <$> event) <|> delayUntil time Nothing
-
--- |Defines an event that times out after a certain interval of time.
-timeout :: NominalDiffTime -> Event a -> Event (Maybe a)
-timeout interval event = (Just <$> event) <|> delayFor interval Nothing
-
-unsafeLiftIO :: IO a -> Event a
-unsafeLiftIO action = newEvent $ \trail handler -> do
-    value <- action
-    handler value trail
+-- |Concurrently evaluates an event. The event will only synchronize when the
+-- returned event is synchronized. After synchronization, a new thread will be
+-- spawned for the specified action.
+forkEvent :: Event a -> (a -> IO ()) -> Event Unique
+forkEvent event action = do
+    channel <- newSwapChannel
+    output <- unsafeLiftIO $ do
+        emptyTrail <- newTrail
+        runEvent (signalFront channel >> event) emptyTrail action'
+        return $ Trail.syncID emptyTrail
+    signalBack channel
+    return output
+  where
+    action' = syncHandler (void . forkIO . action)
 
 -- |Merges a list of events. The resulting event will wait for all the source
 -- events to synchronize before returning a value. Unlike
