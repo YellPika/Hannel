@@ -1,10 +1,11 @@
 {-# LANGUAGE DoAndIfThenElse #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE Safe #-}
 
 module Control.Concurrent.Hannel.Event (
     Event, sync, syncID,
     merge, tee, split,
-    forkEvent, forkServer,
+    forkEvent, forkEventCancel, forkEventHandle, forkServer,
     ServerHandle, touchServerHandle, withServerHandle,
     module Control.Concurrent.Hannel.Event.Class,
     module Control.Concurrent.Hannel.Event.Time
@@ -19,21 +20,19 @@ import Control.Concurrent.Hannel.Event.Sync (sync, syncHandler, syncID)
 import Control.Concurrent.Hannel.Event.Time
 import Control.Concurrent.Hannel.Event.Trail (newTrail)
 import Control.Monad (msum, void)
-import Foreign.Concurrent (newForeignPtr)
-import Foreign.ForeignPtr.Safe (ForeignPtr, touchForeignPtr)
-import Foreign.Marshal.Alloc (mallocBytes, free)
+import Data.IORef (IORef, newIORef, mkWeakIORef)
 import Data.Unique (Unique)
 
 import qualified Control.Concurrent.Hannel.Event.Trail as Trail
 
--- |A handle associated with a server. When this handle goes out of scope,
+-- |A handle associated with a server. When this handle is garbage collected,
 -- the associated server is terminated.
-newtype ServerHandle = ServerHandle (ForeignPtr ())
+newtype ServerHandle = ServerHandle (IORef ())
   deriving Eq
 
 -- |Ensures that a server handle is not garbage collected.  
 touchServerHandle :: ServerHandle -> Event ()
-touchServerHandle (ServerHandle ptr) = unsafeLiftIO $ touchForeignPtr ptr
+touchServerHandle (ServerHandle ptr) = return $ seq ptr ()
 
 -- |Associates a server handle with an event. The server handle will not be
 -- garbage collected until after the associated event is.
@@ -46,7 +45,6 @@ withServerHandle handle event = touchServerHandle handle >> event
 forkServer :: a -> (a -> Event a) -> Event (Unique, ServerHandle)
 forkServer value step = do
     closeChannel <- newSwapChannel
-
     let closeEvent = Nothing <$ signalFront closeChannel
 
         loopIO (Just x) = sync (loopEvent x) >>= loopIO
@@ -60,32 +58,53 @@ forkServer value step = do
                     loopEvent value <|>
                     closeEvent
 
-    serverID <- forkEvent initEvent loopIO
+    serverID <- forkEvent $ (initEvent >>= return . loopIO)
 
     handle <- unsafeLiftIO $ do
-        ptr <- mallocBytes 1
-        newForeignPtr ptr $ do
-            free ptr
+        ref <- newIORef ()
+        void $ mkWeakIORef ref $ do
             putStrLn "Finalizing!"
             sync $ signalBack closeChannel
+        return $ ServerHandle ref
 
-    return (serverID, ServerHandle handle)
+    return (serverID, handle)
 
--- |Concurrently evaluates an event. The event will only synchronize when the
--- returned event is synchronized. After synchronization, a new thread will be
--- spawned for the specified action.
-forkEvent :: Event a -> (a -> IO ()) -> Event Unique
-forkEvent event action = do
+-- |Concurrently evaluates an event that will be cancelled when the returned
+-- handle goes out of scope.
+forkEventHandle :: (Event () -> Event (IO ())) -> Event (Unique, ServerHandle)
+forkEventHandle event = do
+    (output, close) <- forkEventCancel event
+
+    handle <- unsafeLiftIO $ do
+        ref <- newIORef ()
+        void $ mkWeakIORef ref $ do
+            putStrLn "Finalizing!"
+            sync close
+        return $ ServerHandle ref
+
+    return (output, handle)
+
+-- |Concurrently evaluates an event that may be cancelled.
+forkEventCancel :: (Event () -> Event (IO ())) -> Event (Unique, Event ())
+forkEventCancel event = do
     channel <- newSwapChannel
+    output <- forkEvent $ event $ signalFront channel
+    return (output, signalBack channel)
+
+-- |Concurrently evaluates an event. After synchronization, a new thread will be
+-- spawned that executes the resulting IO value.
+forkEvent :: Event (IO ()) -> Event Unique
+forkEvent event = do
+    channel <- newSwapChannel
+    let event' = signalFront channel >> event
+        action = syncHandler (void . forkIO)
+
     output <- unsafeLiftIO $ do
         emptyTrail <- newTrail
-        void $ forkIO $ runEvent (signalFront channel >> event) emptyTrail action'
+        void $ forkIO $ runEvent event' emptyTrail action
         return $ Trail.syncID emptyTrail
     signalBack channel
     return output
-  where
-    -- The resulting action is forked HERE to prevent waiting on an MVar.
-    action' = syncHandler (void . forkIO . action)
 
 -- |Merges a list of events. The resulting event will wait for all the source
 -- events to synchronize before returning a value. Unlike
