@@ -79,11 +79,12 @@ forkEvent event action = do
     channel <- newSwapChannel
     output <- unsafeLiftIO $ do
         emptyTrail <- newTrail
-        runEvent (signalFront channel >> event) emptyTrail action'
+        void $ forkIO $ runEvent (signalFront channel >> event) emptyTrail action'
         return $ Trail.syncID emptyTrail
     signalBack channel
     return output
   where
+    -- The resulting action is forked HERE to prevent waiting on an MVar.
     action' = syncHandler (void . forkIO . action)
 
 -- |Merges a list of events. The resulting event will wait for all the source
