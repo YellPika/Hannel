@@ -7,6 +7,7 @@ module Control.Concurrent.Hannel.Channel.Round (
 ) where
 
 import Control.Applicative ((<$), (<$>), (<|>))
+import Control.Arrow (second)
 import Control.Concurrent.Hannel.Channel.Swap (SwapChannel, newSwapChannel, sendFront, sendBack, receiveFront, receiveBack)
 import Control.Concurrent.Hannel.Event.Base (Event)
 import Control.Monad (replicateM, forM, guard)
@@ -56,4 +57,4 @@ server (RoundChannel count channel) value = do
 
 deletions :: [a] -> [(a, [a])]
 deletions [] = []
-deletions (x:xs) = (x, xs) : map (\(y, ys) -> (y, x:ys)) (deletions xs)
+deletions (x:xs) = (x, xs) : map (second (x :)) (deletions xs)

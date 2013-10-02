@@ -19,7 +19,7 @@ import Control.Concurrent.Hannel.Event.Class
 import Control.Concurrent.Hannel.Event.Sync (sync, syncHandler, syncID)
 import Control.Concurrent.Hannel.Event.Time
 import Control.Concurrent.Hannel.Event.Trail (newTrail)
-import Control.Monad (msum, void)
+import Control.Monad (liftM, msum, void)
 import Data.IORef (IORef, newIORef, mkWeakIORef)
 import Data.Unique (Unique)
 
@@ -58,7 +58,7 @@ forkServer value step = do
                     loopEvent value <|>
                     closeEvent
 
-    serverID <- forkEvent $ (initEvent >>= return . loopIO)
+    serverID <- forkEvent $ liftM loopIO initEvent
 
     handle <- unsafeLiftIO $ do
         ref <- newIORef ()
