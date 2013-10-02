@@ -3,7 +3,7 @@ module Control.Concurrent.Hannel.Var.Mutable (
 ) where
 
 import Control.Concurrent.Hannel.Channel.Swap (newSwapChannel, sendFront, receiveFront, sendBack, receiveBack)
-import Control.Concurrent.Hannel.Event (Event, forkServer, withServerHandle)
+import Control.Concurrent.Hannel.Event (Event, forkServer, touchEventHandle)
 import Control.Concurrent.Hannel.Var.Class (Var, putVar, takeVar)
 import Data.Functor ((<$>), (<$))
 
@@ -36,8 +36,8 @@ newMVar' value  = do
 
     (_, handle) <- forkServer value step
     return MVar {
-        putMVar = withServerHandle handle . sendBack inChannel,
-        takeMVar = withServerHandle handle $ receiveBack outChannel
+        putMVar = touchEventHandle handle . sendBack inChannel,
+        takeMVar = touchEventHandle handle $ receiveBack outChannel
     }
 
 instance Var MVar where

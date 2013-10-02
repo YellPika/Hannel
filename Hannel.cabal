@@ -17,6 +17,7 @@ library
                        Control.Concurrent.Hannel.Channel.Swap,
                        Control.Concurrent.Hannel.Event,
                        Control.Concurrent.Hannel.Event.Class,
+                       Control.Concurrent.Hannel.Event.Handle,
                        Control.Concurrent.Hannel.Process,
                        Control.Concurrent.Hannel.Var,
                        Control.Concurrent.Hannel.Var.Class,

@@ -3,7 +3,7 @@ module Control.Concurrent.Hannel.Var.Immutable (
 ) where
 
 import Control.Concurrent.Hannel.Channel.Swap (newSwapChannel, sendFront, receiveFront, sendBack, receiveBack)
-import Control.Concurrent.Hannel.Event (Event, forkServer, withServerHandle)
+import Control.Concurrent.Hannel.Event (Event, forkServer, touchEventHandle)
 import Control.Concurrent.Hannel.Var.Class (Var, putVar, takeVar)
 import Data.Functor ((<$>), (<$))
 
@@ -31,8 +31,8 @@ newIVar = do
 
     (_, handle) <- forkServer Nothing step
     return IVar {
-        putIVar = withServerHandle handle . sendBack inChannel,
-        takeIVar = withServerHandle handle $ receiveBack outChannel
+        putIVar = touchEventHandle handle . sendBack inChannel,
+        takeIVar = touchEventHandle handle $ receiveBack outChannel
     }
 
 instance Var IVar where

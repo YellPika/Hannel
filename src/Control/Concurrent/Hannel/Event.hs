@@ -6,82 +6,44 @@ module Control.Concurrent.Hannel.Event (
     Event, sync, syncID,
     merge, tee, split,
     forkEvent, forkEventCancel, forkEventHandle, forkServer,
-    ServerHandle, touchServerHandle, withServerHandle,
     module Control.Concurrent.Hannel.Event.Class,
+    module Control.Concurrent.Hannel.Event.Handle,
     module Control.Concurrent.Hannel.Event.Time
 ) where
 
-import Control.Applicative ((<|>), (<$))
+import Control.Applicative ((<|>))
 import Control.Concurrent (forkIO)
 import Control.Concurrent.Hannel.Channel.Swap (newSwapChannel, sendFront, receiveBack, signalFront, signalBack)
 import Control.Concurrent.Hannel.Event.Base (Event, runEvent, unsafeLiftIO)
 import Control.Concurrent.Hannel.Event.Class
+import Control.Concurrent.Hannel.Event.Handle (EventHandle, newEventHandle, touchEventHandle)
 import Control.Concurrent.Hannel.Event.Sync (sync, syncHandler, syncID)
 import Control.Concurrent.Hannel.Event.Time
 import Control.Concurrent.Hannel.Event.Trail (newTrail)
-import Control.Monad (liftM, msum, void)
-import Data.IORef (IORef, newIORef, mkWeakIORef)
+import Control.Monad (join, msum, void)
 import Data.Unique (Unique)
 
 import qualified Control.Concurrent.Hannel.Event.Trail as Trail
 
--- |A handle associated with a server. When this handle is garbage collected,
--- the associated server is terminated.
-newtype ServerHandle = ServerHandle (IORef ())
-  deriving Eq
-
--- |Ensures that a server handle is not garbage collected.  
-touchServerHandle :: ServerHandle -> Event ()
-touchServerHandle (ServerHandle ptr) = return $ seq ptr ()
-
--- |Associates a server handle with an event. The server handle will not be
--- garbage collected until after the associated event is.
-withServerHandle :: ServerHandle -> Event a -> Event a
-withServerHandle handle event = touchServerHandle handle >> event
-
 -- |Forks a new thread that continuously synchronizes on
 -- an event parametrized by a state value. The result of
 -- the event is fed back into itself as input.
-forkServer :: a -> (a -> Event a) -> Event (Unique, ServerHandle)
-forkServer value step = do
-    closeChannel <- newSwapChannel
-    let closeEvent = Nothing <$ signalFront closeChannel
-
-        loopIO (Just x) = sync (loopEvent x) >>= loopIO
-        loopIO Nothing = return ()
-
+forkServer :: a -> (a -> Event a) -> Event (Unique, EventHandle)
+forkServer value step = forkEventHandle $ \close ->
+    let closeEvent = fmap return close
+        loopIO = join . sync . loopEvent
         loopEvent x = closeEvent <|> do
             x' <- step x
-            loopEvent x' <|> return (Just x')
-
-        initEvent = return (Just value) <|>
-                    loopEvent value <|>
-                    closeEvent
-
-    serverID <- forkEvent $ liftM loopIO initEvent
-
-    handle <- unsafeLiftIO $ do
-        ref <- newIORef ()
-        void $ mkWeakIORef ref $ do
-            putStrLn "Finalizing!"
-            sync $ signalBack closeChannel
-        return $ ServerHandle ref
-
-    return (serverID, handle)
+            loopEvent x' <|> return (loopIO x')
+    in
+        closeEvent <|> return (loopIO value) <|> loopEvent value
 
 -- |Concurrently evaluates an event that will be cancelled when the returned
 -- handle goes out of scope.
-forkEventHandle :: (Event () -> Event (IO ())) -> Event (Unique, ServerHandle)
+forkEventHandle :: (Event () -> Event (IO ())) -> Event (Unique, EventHandle)
 forkEventHandle event = do
-    (output, close) <- forkEventCancel event
-
-    handle <- unsafeLiftIO $ do
-        ref <- newIORef ()
-        void $ mkWeakIORef ref $ do
-            putStrLn "Finalizing!"
-            sync close
-        return $ ServerHandle ref
-
+    (handle, close) <- newEventHandle
+    output <- forkEvent $ event close
     return (output, handle)
 
 -- |Concurrently evaluates an event that may be cancelled.

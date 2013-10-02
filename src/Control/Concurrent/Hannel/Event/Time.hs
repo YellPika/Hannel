@@ -6,18 +6,18 @@ module Control.Concurrent.Hannel.Event.Time (
 ) where
 
 import safe Control.Concurrent (yield)
-import safe Control.Applicative ((<|>), (<$>))
+import safe Control.Applicative ((<|>))
 import safe Control.Concurrent.Hannel.Event.Base (Event, unsafeLiftIO)
 import safe Control.Monad (when)
 import Data.Time.Clock (NominalDiffTime, UTCTime, addUTCTime, getCurrentTime)
 
 -- |Defines an event that times out after a certain interval of time.
 timeout :: NominalDiffTime -> Event a -> Event (Maybe a)
-timeout interval event = (Just <$> event) <|> delayFor interval Nothing
+timeout interval event = fmap Just event <|> delayFor interval Nothing
 
 -- |Defines an event that times out at a specific time.
 timeoutAt :: UTCTime -> Event a -> Event (Maybe a)
-timeoutAt time event = (Just <$> event) <|> delayUntil time Nothing
+timeoutAt time event = fmap Just event <|> delayUntil time Nothing
 
 -- |Behaves like return, but waits for the specified interval of time
 -- after synchronization begins before the event becomes available.

@@ -4,7 +4,7 @@ module Control.Concurrent.Hannel.Channel.Buffer (
 
 import Control.Applicative ((<|>), (<$>), (<$))
 import Control.Concurrent.Hannel.Channel.Swap (newSwapChannel, sendFront, sendBack, receiveFront, receiveBack)
-import Control.Concurrent.Hannel.Event (Event, forkServer, withServerHandle)
+import Control.Concurrent.Hannel.Event (Event, forkServer, touchEventHandle)
 import Data.Sequence ((|>), ViewL ((:<)))
 import qualified Data.Sequence as Seq
 
@@ -32,6 +32,6 @@ newBufferChannel = do
             x :< xs -> enqueue queue <|> dequeue x xs
 
     return BufferChannel {
-        putBufferChannel = withServerHandle handle . sendBack inChannel,
-        takeBufferChannel = withServerHandle handle $ receiveBack outChannel
+        putBufferChannel = touchEventHandle handle . sendBack inChannel,
+        takeBufferChannel = touchEventHandle handle $ receiveBack outChannel
     }
