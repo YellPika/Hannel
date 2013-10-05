@@ -5,10 +5,10 @@ module Control.Concurrent.Hannel.Event.Time (
     timeout, timeoutAt, delayFor, delayUntil
 ) where
 
-import safe Control.Concurrent (yield)
-import safe Control.Applicative ((<|>))
-import safe Control.Concurrent.Hannel.Event.Base (Event, unsafeLiftIO)
-import safe Control.Monad (when)
+import Control.Concurrent (yield)
+import Control.Applicative ((<|>))
+import Control.Concurrent.Hannel.Event.Base (Event, unsafeLiftIO)
+import Control.Monad (when)
 import Data.Time.Clock (NominalDiffTime, UTCTime, addUTCTime, getCurrentTime)
 
 -- |Defines an event that times out after a certain interval of time.
