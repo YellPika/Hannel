@@ -23,19 +23,20 @@ data TrailElement
     | Swap Trail CompletionRef CompletionRef
   deriving Eq
 
+-- Every search thread has an associated trail. A trail is a record of important
+-- search operations, particularly choices between multiple paths, and a swaps
+-- with other threads.
 data Trail = Trail {
     syncLock :: SyncLock,
     path :: Path
-}
-
-instance Eq Trail where
-    x == y = syncLock x == syncLock y && path x == path y
+} deriving Eq
 
 type Path = [TrailElement]
 type CompleteTrail = (Trail, IO ())
 type CompletionRef = IORef [CompleteTrail]
 type CommitSet = Map SyncLock CompleteTrail
 
+-- New trails are empty by default.
 newTrail :: IO Trail
 newTrail = do
     syncLock' <- newSyncLock
@@ -44,6 +45,9 @@ newTrail = do
 extend :: Trail -> TrailElement -> Trail
 extend trail element = trail { path = element : path trail }
 
+-- A trail can be marked as 'complete', indicating that the corresponding search
+-- thread has finished. All related threads are notified via their completion
+-- references.
 complete :: Trail -> IO () -> IO CompleteTrail
 complete trail action = do
     mapM_ register $ path trail
@@ -56,6 +60,8 @@ complete trail action = do
     register (Swap _ _ ref) = atomicModifyIORef ref (\x -> (output:x, ()))
     register _ = return ()
 
+-- A trail is active if its SyncLock is not synced, and all of its dependencies
+-- are also active.
 isActive :: Trail -> IO Bool
 isActive = allM (fmap not . isSynced . syncLock) . dependencies
 
