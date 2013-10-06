@@ -14,11 +14,11 @@ import Data.Functor ((<$>), (<$))
 data MVar a = MVar {
     -- |Writes a value to an MVar. If the MVar is already full,
     -- this event blocks until it is empty.
-    putMVar :: a -> Event (),
+    putMVar :: !(a -> Event ()),
 
     -- |Removes a value from an MVar. If the MVar is empty,
     -- this event blocks until it is full.
-    takeMVar :: Event a
+    takeMVar :: !(Event a)
 }
 
 -- |Creates a new MVar that is filled with the specified value.

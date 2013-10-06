@@ -16,10 +16,10 @@ import qualified Data.Sequence as Seq
 -- |An asynchronous channel. 
 data BVar a = BVar {
     -- |Writes a value to a channel.
-    putBVar :: a -> Event (),
+    putBVar :: !(a -> Event ()),
 
     -- |Reads a value from a channel.
-    takeBVar :: Event a
+    takeBVar :: !(Event a)
 }
 
 -- |Creates a new buffered channel.

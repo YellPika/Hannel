@@ -17,9 +17,9 @@ import Data.Unique (Unique, newUnique)
 -- * Unlocked - the lock is not in use, and may be obtained by anyone.
 -- * Synced - the lock has been permanently locked.
 data SyncLock = SyncLock {
-    identifier :: Unique,
-    status :: MVar Bool,
-    synced :: IORef Bool
+    identifier :: !Unique,
+    status :: !(MVar Bool),
+    synced :: !(IORef Bool)
 }
 
 instance Eq SyncLock where

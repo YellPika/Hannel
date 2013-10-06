@@ -20,16 +20,16 @@ import Data.Unique (Unique)
 import qualified Data.Map as Map
 
 data TrailElement
-    = Choose Integer
-    | Swap Trail CompletionRef CompletionRef
+    = Choose !Integer
+    | Swap !Trail !CompletionRef !CompletionRef
   deriving Eq
 
 -- Every search thread has an associated trail. A trail is a record of important
 -- search operations, particularly choices between multiple paths, and a swaps
 -- with other threads.
 data Trail = Trail {
-    syncLock :: SyncLock,
-    path :: Path
+    syncLock :: !SyncLock,
+    path :: !Path
 } deriving Eq
 
 type Path = [TrailElement]

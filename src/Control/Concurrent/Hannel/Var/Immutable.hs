@@ -16,11 +16,11 @@ import Data.Functor ((<$>), (<$))
 data IVar a = IVar {
     -- |Writes a value to an IVar. If the IVar is already full,
     -- then this event blocks indefinitely.
-    putIVar :: a -> Event (),
+    putIVar :: !(a -> Event ()),
 
     -- |Reads a value from an IVar. If the IVar is empty,
     -- then this event blocks until it is full.
-    takeIVar :: Event a
+    takeIVar :: !(Event a)
 }
 
 -- |Creates a new IVar that is filled with the specified value.
