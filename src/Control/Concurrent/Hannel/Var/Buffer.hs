@@ -1,10 +1,13 @@
-module Control.Concurrent.Hannel.Channel.Buffer (
-    BufferChannel, newBufferChannel, putBufferChannel, takeBufferChannel
+{-# LANGUAGE Safe #-}
+
+module Control.Concurrent.Hannel.Var.Buffer (
+    BVar, newBVar, putBVar, takeBVar
 ) where
 
 import Control.Concurrent.Hannel.Channel.Swap
 import Control.Concurrent.Hannel.Event
 import Control.Concurrent.Hannel.EventHandle
+import Control.Concurrent.Hannel.Var.Class
 
 import Control.Applicative ((<|>), (<$>), (<$))
 import Data.Sequence ((|>), ViewL ((:<)))
@@ -12,17 +15,17 @@ import Data.Sequence ((|>), ViewL ((:<)))
 import qualified Data.Sequence as Seq
 
 -- |An asynchronous channel.
-data BufferChannel a = BufferChannel {
+data BVar a = BVar {
     -- |Writes a value to a channel.
-    putBufferChannel :: a -> Event (),
+    putBVar :: a -> Event (),
 
     -- |Reads a value from a channel.
-    takeBufferChannel :: Event a
+    takeBVar :: Event a
 }
 
 -- |Creates a new buffered channel.
-newBufferChannel :: Event (BufferChannel a)
-newBufferChannel = do
+newBVar :: Event (BVar a)
+newBVar = do
     inChannel <- newSwapChannel
     outChannel <- newSwapChannel
 
@@ -34,7 +37,11 @@ newBufferChannel = do
             Seq.EmptyL -> enqueue queue
             x :< xs -> enqueue queue <|> dequeue x xs
 
-    return BufferChannel {
-        putBufferChannel = wrapEvent handle . sendBack inChannel,
-        takeBufferChannel = wrapEvent handle $ receiveBack outChannel
+    return BVar {
+        putBVar = wrapEvent handle . sendBack inChannel,
+        takeBVar = wrapEvent handle $ receiveBack outChannel
     }
+
+instance Var BVar where
+    putVar = putBVar
+    takeVar = takeVar

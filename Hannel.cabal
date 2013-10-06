@@ -12,13 +12,13 @@ cabal-version:       >=1.8
 
 library
   exposed-modules:     Control.Concurrent.Hannel.Channel,
-                       Control.Concurrent.Hannel.Channel.Buffer,
                        Control.Concurrent.Hannel.Channel.Round,
                        Control.Concurrent.Hannel.Channel.Swap,
                        Control.Concurrent.Hannel.Event,
                        Control.Concurrent.Hannel.Event.Class,
                        Control.Concurrent.Hannel.EventHandle,
                        Control.Concurrent.Hannel.Var,
+                       Control.Concurrent.Hannel.Var.Buffer,
                        Control.Concurrent.Hannel.Var.Class,
                        Control.Concurrent.Hannel.Var.Mutable,
                        Control.Concurrent.Hannel.Var.Immutable
