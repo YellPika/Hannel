@@ -1,13 +1,23 @@
 {-# LANGUAGE DoAndIfThenElse #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE Safe #-}
 
 module Control.Concurrent.Hannel.Event (
-    Event, sync, syncID,
-    merge, tee, split,
-    forkEvent, forkEventCancel, forkEventHandle, forkServer,
+    Event,
     module Control.Concurrent.Hannel.Event.Class,
-    module Control.Concurrent.Hannel.Event.Time
+
+    sync, syncID,
+
+    -- * Merging and Splitting
+    merge, tee, split,
+
+    -- * Threading
+    forkEvent, forkEventCancel, forkEventHandle, forkServer,
+
+    -- * Time
+    module Control.Concurrent.Hannel.Event.Time,
+
+    -- * Unsafe
+    unsafeLiftIO,
 ) where
 
 import Control.Concurrent.Hannel.Channel.Swap

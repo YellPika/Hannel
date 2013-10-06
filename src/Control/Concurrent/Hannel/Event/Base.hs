@@ -85,7 +85,9 @@ syncID :: Event Unique
 syncID = newEvent $ \trail handler ->
     handler (trailID trail) trail
 
--- |Lifts an IO action to the Event monad.
+-- |Lifts an IO action to the Event monad. This function is not unsafe in the
+-- normal sense (i.e. unsafePerformIO). Use of this function can break the
+-- semantics of the Event type.
 unsafeLiftIO :: IO a -> Event a
 unsafeLiftIO action = newEvent $ \trail handler -> do
     value <- action
