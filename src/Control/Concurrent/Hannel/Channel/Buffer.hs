@@ -2,10 +2,13 @@ module Control.Concurrent.Hannel.Channel.Buffer (
     BufferChannel, newBufferChannel, putBufferChannel, takeBufferChannel
 ) where
 
+import Control.Concurrent.Hannel.Channel.Swap
+import Control.Concurrent.Hannel.Event
+import Control.Concurrent.Hannel.EventHandle
+
 import Control.Applicative ((<|>), (<$>), (<$))
-import Control.Concurrent.Hannel.Channel.Swap (newSwapChannel, sendFront, sendBack, receiveFront, receiveBack)
-import Control.Concurrent.Hannel.Event (Event, forkServer, touchEventHandle)
 import Data.Sequence ((|>), ViewL ((:<)))
+
 import qualified Data.Sequence as Seq
 
 -- |An asynchronous channel.
@@ -32,6 +35,6 @@ newBufferChannel = do
             x :< xs -> enqueue queue <|> dequeue x xs
 
     return BufferChannel {
-        putBufferChannel = touchEventHandle handle . sendBack inChannel,
-        takeBufferChannel = touchEventHandle handle $ receiveBack outChannel
+        putBufferChannel = wrapEvent handle . sendBack inChannel,
+        takeBufferChannel = wrapEvent handle $ receiveBack outChannel
     }

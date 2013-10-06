@@ -7,23 +7,18 @@ module Control.Concurrent.Hannel.Event (
     merge, tee, split,
     forkEvent, forkEventCancel, forkEventHandle, forkServer,
     module Control.Concurrent.Hannel.Event.Class,
-    module Control.Concurrent.Hannel.Event.Handle,
     module Control.Concurrent.Hannel.Event.Time
 ) where
 
-import Control.Applicative ((<|>))
-import Control.Concurrent (forkIO)
-import Control.Concurrent.Hannel.Channel.Swap (newSwapChannel, sendFront, receiveBack, signalFront, signalBack)
-import Control.Concurrent.Hannel.Event.Base (Event, runEvent, unsafeLiftIO)
+import Control.Concurrent.Hannel.Channel.Swap
+import Control.Concurrent.Hannel.Event.Base
 import Control.Concurrent.Hannel.Event.Class
-import Control.Concurrent.Hannel.Event.Handle (EventHandle, newEventHandle, touchEventHandle)
-import Control.Concurrent.Hannel.Event.Sync (sync, syncHandler, syncID)
 import Control.Concurrent.Hannel.Event.Time
-import Control.Concurrent.Hannel.Event.Trail (newTrail)
-import Control.Monad (join, msum, void)
-import Data.Unique (Unique)
+import Control.Concurrent.Hannel.EventHandle
 
-import qualified Control.Concurrent.Hannel.Event.Trail as Trail
+import Control.Applicative ((<|>))
+import Control.Monad (join, msum)
+import Data.Unique (Unique)
 
 -- |Forks a new thread that continuously synchronizes on
 -- an event parametrized by a state value. The result of
@@ -52,21 +47,6 @@ forkEventCancel event = do
     channel <- newSwapChannel
     output <- forkEvent $ event $ signalFront channel
     return (output, signalBack channel)
-
--- |Concurrently evaluates an event. After synchronization, a new thread will be
--- spawned that executes the resulting IO value.
-forkEvent :: Event (IO ()) -> Event Unique
-forkEvent event = do
-    channel <- newSwapChannel
-    let event' = signalFront channel >> event
-        action = syncHandler (void . forkIO)
-
-    output <- unsafeLiftIO $ do
-        emptyTrail <- newTrail
-        void $ forkIO $ runEvent event' emptyTrail action
-        return $ Trail.syncID emptyTrail
-    signalBack channel
-    return output
 
 -- |Merges a list of events. The resulting event will wait for all the source
 -- events to synchronize before returning a value. Unlike

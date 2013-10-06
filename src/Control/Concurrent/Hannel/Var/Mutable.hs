@@ -1,10 +1,14 @@
+{-# LANGUAGE Safe #-}
+
 module Control.Concurrent.Hannel.Var.Mutable (
     MVar (), newMVar, newEmptyMVar, putMVar, takeMVar
 ) where
 
-import Control.Concurrent.Hannel.Channel.Swap (newSwapChannel, sendFront, receiveFront, sendBack, receiveBack)
-import Control.Concurrent.Hannel.Event (Event, forkServer, touchEventHandle)
-import Control.Concurrent.Hannel.Var.Class (Var, putVar, takeVar)
+import Control.Concurrent.Hannel.Channel.Swap
+import Control.Concurrent.Hannel.Event
+import Control.Concurrent.Hannel.EventHandle
+import Control.Concurrent.Hannel.Var.Class
+
 import Data.Functor ((<$>), (<$))
 
 -- |An MVar is a concurrent data structure that may either be full or empty.
@@ -36,8 +40,8 @@ newMVar' value  = do
 
     (_, handle) <- forkServer value step
     return MVar {
-        putMVar = touchEventHandle handle . sendBack inChannel,
-        takeMVar = touchEventHandle handle $ receiveBack outChannel
+        putMVar = wrapEvent handle . sendBack inChannel,
+        takeMVar = wrapEvent handle $ receiveBack outChannel
     }
 
 instance Var MVar where

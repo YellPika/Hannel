@@ -4,7 +4,8 @@ module Control.Concurrent.Hannel.Process (
     Process (finish), with, withIO
 ) where
 
-import Control.Concurrent.Hannel.Event (Event, sync)
+import Control.Concurrent.Hannel.Event
+
 import Control.Exception (bracket)
 
 -- |Represents a process that runs in a separate thread.

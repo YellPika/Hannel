@@ -6,7 +6,8 @@ module Control.Concurrent.Hannel.Event.Class (
     MonadEvent (liftEvent)
 ) where
 
-import Control.Concurrent.Hannel.Event.Base (Event)
+import Control.Concurrent.Hannel.Event.Base
+
 import Control.Monad (MonadPlus)
 import Control.Monad.Trans (MonadTrans, lift)
 

@@ -1,10 +1,14 @@
+{-# LANGUAGE Safe #-}
+
 module Control.Concurrent.Hannel.Var.Immutable (
     IVar (), newIVar, putIVar, takeIVar
 ) where
 
-import Control.Concurrent.Hannel.Channel.Swap (newSwapChannel, sendFront, receiveFront, sendBack, receiveBack)
-import Control.Concurrent.Hannel.Event (Event, forkServer, touchEventHandle)
-import Control.Concurrent.Hannel.Var.Class (Var, putVar, takeVar)
+import Control.Concurrent.Hannel.Channel.Swap
+import Control.Concurrent.Hannel.Event
+import Control.Concurrent.Hannel.EventHandle
+import Control.Concurrent.Hannel.Var.Class
+
 import Data.Functor ((<$>), (<$))
 
 -- |An IVar is a concurrent data structure that may either be full or empty.
@@ -31,8 +35,8 @@ newIVar = do
 
     (_, handle) <- forkServer Nothing step
     return IVar {
-        putIVar = touchEventHandle handle . sendBack inChannel,
-        takeIVar = touchEventHandle handle $ receiveBack outChannel
+        putIVar = wrapEvent handle . sendBack inChannel,
+        takeIVar = wrapEvent handle $ receiveBack outChannel
     }
 
 instance Var IVar where

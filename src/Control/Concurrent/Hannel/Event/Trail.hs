@@ -3,11 +3,12 @@
 module Control.Concurrent.Hannel.Event.Trail (
     Trail (), TrailElement (..),
     newTrail, extend, complete,
-    commitSets, syncID,
+    commitSets, trailID,
     isActive, isCoherent
 ) where
 
-import Control.Concurrent.Hannel.Event.SyncLock (SyncLock, newSyncLock, isSynced, identifier)
+import Control.Concurrent.Hannel.Event.SyncLock
+
 import Control.Monad (guard)
 import Control.Monad.Trans (liftIO)
 import Control.Monad.List (ListT (..))
@@ -65,8 +66,8 @@ complete trail action = do
 isActive :: Trail -> IO Bool
 isActive = allM (fmap not . isSynced . syncLock) . dependencies
 
-syncID :: Trail -> Unique
-syncID = identifier . syncLock
+trailID :: Trail -> Unique
+trailID = identifier . syncLock
 
 commitSets :: CompleteTrail -> IO [CommitSet]
 commitSets completeValue@(trail, _) = runListT $ do

@@ -5,9 +5,10 @@ module Control.Concurrent.Hannel.Event.Time (
     timeout, timeoutAt, delayFor, delayUntil
 ) where
 
+import Control.Concurrent.Hannel.Event.Base
+
 import Control.Concurrent (yield)
 import Control.Applicative ((<|>))
-import Control.Concurrent.Hannel.Event.Base (Event, unsafeLiftIO)
 import Control.Monad (when)
 import Data.Time.Clock (NominalDiffTime, UTCTime, addUTCTime, getCurrentTime)
 

@@ -1,19 +1,16 @@
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE Safe #-}
 
 module Control.Concurrent.Hannel.Channel.Round (
     RoundChannel (), newRoundChannel, swapRound, signalRound
 ) where
 
+import Control.Concurrent.Hannel.Channel.Swap
+import Control.Concurrent.Hannel.Event.Base
+
 import Control.Applicative ((<$), (<$>), (<|>))
 import Control.Arrow (second)
-import Control.Concurrent.Hannel.Channel.Swap (SwapChannel, newSwapChannel, sendFront, sendBack, receiveFront, receiveBack)
-import Control.Concurrent.Hannel.Event.Base (Event)
 import Control.Monad (replicateM, forM, guard)
 import Data.Unique (Unique)
-
-import qualified Control.Concurrent.Hannel.Event as Event
 
 -- |A round channel is designed for performing an n-way swap.
 data RoundChannel a = RoundChannel Int (SwapChannel () (a, Unique, SwapChannel [a] ()))
@@ -37,17 +34,17 @@ swapRound channel value = client' <|> server'
 client :: RoundChannel a -> a -> Event [a]
 client (RoundChannel _ channel) value = do
     response <- newSwapChannel
-    syncID <- Event.syncID
-    sendBack channel (value, syncID, response)
+    sID <- syncID
+    sendBack channel (value, sID, response)
     receiveBack response
 
 server :: RoundChannel a -> a -> Event [a]
 server (RoundChannel count channel) value = do
-    syncID <- Event.syncID
+    sID <- syncID
 
     clients <- replicateM (count - 1) $ do
-        (value', syncID', response) <- receiveFront channel
-        guard (syncID < syncID') -- Smallest syncID becomes the server.
+        (value', sID', response) <- receiveFront channel
+        guard (sID < sID') -- Smallest sID becomes the server.
         return (value', response)
 
     forM (deletions clients) $ \((value', response), remaining) -> do
