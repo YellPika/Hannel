@@ -4,7 +4,6 @@ module Control.Concurrent.Hannel.Var.Mutable (
     MVar (), newMVar, newEmptyMVar, putMVar, takeMVar
 ) where
 
-import Control.Concurrent.Hannel.Channel.Swap
 import Control.Concurrent.Hannel.Event
 import Control.Concurrent.Hannel.EventHandle
 import Control.Concurrent.Hannel.Var.Class
@@ -32,16 +31,16 @@ newEmptyMVar = newMVar' Nothing
 
 newMVar' :: Maybe a -> Event (MVar a)
 newMVar' value  = do
-    inChannel <- newSwapChannel
-    outChannel <- newSwapChannel
+    (sendIn, receiveIn) <- swap
+    (sendOut, receiveOut) <- swap
 
-    let step Nothing = Just <$> receiveFront inChannel
-        step (Just x) = Nothing <$ sendFront outChannel x
+    let step Nothing = Just <$> receiveIn ()
+        step (Just x) = Nothing <$ sendOut x
 
     (_, handle) <- forkServer value step
     return MVar {
-        putMVar = wrapEvent handle . sendBack inChannel,
-        takeMVar = wrapEvent handle $ receiveBack outChannel
+        putMVar = wrapEvent handle . sendIn,
+        takeMVar = wrapEvent handle $ receiveOut ()
     }
 
 instance Var MVar where

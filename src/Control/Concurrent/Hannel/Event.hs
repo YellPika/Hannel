@@ -5,7 +5,11 @@ module Control.Concurrent.Hannel.Event (
     Event,
     module Control.Concurrent.Hannel.Event.Class,
 
+    -- * Synchronization
     sync, syncID,
+
+    -- * Swapping
+    swap,
 
     -- * Merging and Splitting
     merge, tee, split,
@@ -20,7 +24,6 @@ module Control.Concurrent.Hannel.Event (
     unsafeLiftIO,
 ) where
 
-import Control.Concurrent.Hannel.Channel.Swap
 import Control.Concurrent.Hannel.Event.Base
 import Control.Concurrent.Hannel.Event.Class
 import Control.Concurrent.Hannel.Event.Time
@@ -54,9 +57,9 @@ forkEventHandle event = do
 -- |Concurrently evaluates an event that may be cancelled.
 forkEventCancel :: (Event () -> Event (IO ())) -> Event (Unique, Event ())
 forkEventCancel event = do
-    channel <- newSwapChannel
-    output <- forkEvent $ event $ signalFront channel
-    return (output, signalBack channel)
+    (waitFront, waitBack) <- swap
+    output <- forkEvent $ event $ waitFront ()
+    return (output, waitBack ())
 
 -- |Merges a list of events. The resulting event will wait for all the source
 -- events to synchronize before returning a value. Unlike
@@ -80,12 +83,12 @@ splits (x:xs) = ([], x, xs) : map (\(l, c, r) -> (x:l, c, r)) (splits xs)
 -- simultaneously when the original event is fired.
 tee :: Event a -> Event (Event a, Event a)
 tee event = do
-    channel <- newSwapChannel
+    (send, receive) <- swap
 
-    let client = receiveBack channel
+    let client = receive ()
         server = do
             x <- event
-            sendFront channel x
+            send x
             return x
         output = client <|> server
 

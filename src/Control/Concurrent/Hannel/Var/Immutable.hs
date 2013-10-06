@@ -4,7 +4,6 @@ module Control.Concurrent.Hannel.Var.Immutable (
     IVar (), newIVar, putIVar, takeIVar
 ) where
 
-import Control.Concurrent.Hannel.Channel.Swap
 import Control.Concurrent.Hannel.Event
 import Control.Concurrent.Hannel.EventHandle
 import Control.Concurrent.Hannel.Var.Class
@@ -27,16 +26,16 @@ data IVar a = IVar {
 -- |Creates a new IVar that is filled with the specified value.
 newIVar :: Event (IVar a)
 newIVar = do
-    inChannel <- newSwapChannel
-    outChannel <- newSwapChannel
+    (sendIn, receiveIn) <- swap
+    (sendOut, receiveOut) <- swap
 
-    let step Nothing = Just <$> receiveFront inChannel
-        step (Just x) = Just x <$ sendFront outChannel x
+    let step Nothing = Just <$> receiveIn ()
+        step (Just x) = Just x <$ sendOut x
 
     (_, handle) <- forkServer Nothing step
     return IVar {
-        putIVar = wrapEvent handle . sendBack inChannel,
-        takeIVar = wrapEvent handle $ receiveBack outChannel
+        putIVar = wrapEvent handle . sendIn,
+        takeIVar = wrapEvent handle $ receiveOut ()
     }
 
 instance Var IVar where

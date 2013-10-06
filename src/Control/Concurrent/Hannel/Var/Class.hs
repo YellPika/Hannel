@@ -2,7 +2,7 @@ module Control.Concurrent.Hannel.Var.Class (
     Var (putVar, takeVar)
 ) where
 
-import Control.Concurrent.Hannel.Event (Event)
+import Control.Concurrent.Hannel.Event
 
 -- |Describes a variable that supports concurrent operations.
 class Var v where

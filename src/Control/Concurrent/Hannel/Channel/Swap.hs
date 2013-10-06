@@ -8,7 +8,7 @@ module Control.Concurrent.Hannel.Channel.Swap (
     receiveFront, receiveBack
 ) where
 
-import Control.Concurrent.Hannel.Event.Base
+import Control.Concurrent.Hannel.Event
 
 -- |A one-to-one synchronous swap channel.
 data SwapChannel f b = SwapChannel (f -> Event b) (b -> Event f)

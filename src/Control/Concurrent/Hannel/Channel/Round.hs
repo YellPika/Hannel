@@ -5,7 +5,7 @@ module Control.Concurrent.Hannel.Channel.Round (
 ) where
 
 import Control.Concurrent.Hannel.Channel.Swap
-import Control.Concurrent.Hannel.Event.Base
+import Control.Concurrent.Hannel.Event
 
 import Control.Applicative ((<$), (<$>), (<|>))
 import Control.Arrow (second)
