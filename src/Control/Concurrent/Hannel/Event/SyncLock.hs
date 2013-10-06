@@ -2,9 +2,10 @@
 {-# LANGUAGE Safe #-}
 
 module Control.Concurrent.Hannel.Event.SyncLock (
-    SyncLock (), newSyncLock, identifier, isSynced, withAll
+    SyncLock (), newSyncLock, identifier, isSynced, syncAll
 ) where
 
+import Control.Applicative ((<$))
 import Control.Concurrent.MVar (MVar, newMVar, putMVar, takeMVar)
 import Control.Monad (when)
 import Data.IORef (IORef, newIORef, readIORef, atomicWriteIORef)
@@ -45,23 +46,17 @@ newSyncLock = do
 isSynced :: SyncLock -> IO Bool
 isSynced = readIORef . synced
 
--- Obtains a set of locks in a deadlock free manner. If none of the locks have
--- already been synced, then a specified action is executed, and all the locks
--- become synced.
-withAll :: [SyncLock] -> IO a -> IO (Maybe a)
-withAll locks action = withAll' [] $ sort locks
+-- Synchronizes a set of locks in a deadlock free manner.
+-- Returns false if any of the locks have already been synced.
+syncAll :: [SyncLock] -> IO Bool
+syncAll = syncAll' [] . sort
   where
-    withAll' obtained [] = do
-        output <- action
-        mapM_ sync obtained
-        return $ Just output
-    withAll' obtained (x:xs) = do
+    syncAll' obtained [] = True <$ mapM_ sync obtained
+    syncAll' obtained (x:xs) = do
         acquired <- acquire x
-        if acquired then
-            withAll' (x : obtained) xs
-        else do
-            mapM_ release obtained
-            return Nothing
+        if acquired
+        then syncAll' (x : obtained) xs
+        else False <$ mapM_ release obtained
 
 acquire :: SyncLock -> IO Bool
 acquire lock = do

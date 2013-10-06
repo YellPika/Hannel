@@ -72,13 +72,14 @@ syncHandler action value trail = do
 
     case commitSet of
         [] -> return ()
-        xs:_ ->
+        xs:_ -> do
             -- Each assoc will be in the form (lock, (trail, action)).
             let assocs = Map.assocs xs
                 locks = map fst assocs
-                actions = map (snd . snd) assocs in
+                actions = map (snd . snd) assocs
 
-            void $ withAll locks $ sequence_ actions
+            result <- syncAll locks
+            when result $ sequence_ actions
 
 -- |An event that returns a unique identifier for the initial sync operation.
 syncID :: Event Unique
