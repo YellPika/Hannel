@@ -12,6 +12,7 @@ cabal-version:       >=1.8
 
 library
   exposed-modules:     Control.Concurrent.Hannel.Channel,
+                       Control.Concurrent.Hannel.Channel.Broadcast,
                        Control.Concurrent.Hannel.Channel.Round,
                        Control.Concurrent.Hannel.Channel.Swap,
                        Control.Concurrent.Hannel.Event,
