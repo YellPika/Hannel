@@ -7,16 +7,15 @@ module Control.Concurrent.Transactional.Event.Base (
 
 import Control.Concurrent.Transactional.Event.SyncLock
 import Control.Concurrent.Transactional.Event.Trail
+import Data.List.Util
 
 import Control.Applicative (Applicative, Alternative, empty, (<|>), pure, (<*>))
 import Control.Concurrent (forkIO)
 import Control.Concurrent.MVar (MVar, newMVar, newEmptyMVar, withMVar, putMVar, takeMVar)
-import Control.Monad (MonadPlus, mzero, mplus, ap, filterM, forM, forM_, void, when)
+import Control.Monad (MonadPlus, mzero, mplus, ap, filterM, forM_, void, when)
 import Control.Monad.Trans (MonadIO, liftIO)
-import Data.Array.IO.Safe (IOArray, newListArray, readArray, writeArray)
 import Data.IORef (IORef, newIORef, readIORef, writeIORef, modifyIORef)
 import Data.Unique (Unique)
-import System.Random (randomRIO)
 
 import qualified Data.Map as Map
 
@@ -41,20 +40,6 @@ runEvent (Event events) trail handler =
     mapM_ (void . forkIO . searchThread)
   where
     searchThread (index, f) = f (extend trail $ Choose index) handler
-
-shuffle :: [a] -> IO [a]
-shuffle xs = do
-    let n = length xs
-    ar <- newArray n xs
-    forM [1 .. n] $ \i -> do
-        j <- randomRIO (i, n)
-        vi <- readArray ar i
-        vj <- readArray ar j
-        writeArray ar j vi
-        return vj
-
-newArray :: Int -> [a] -> IO (IOArray Int a)
-newArray n = newListArray (1, n)
 
 -- |Blocks the current thread until the specified event yields a value.
 sync :: MonadIO m => Event a -> m a

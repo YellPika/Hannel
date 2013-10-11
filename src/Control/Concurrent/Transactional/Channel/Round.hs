@@ -6,9 +6,9 @@ module Control.Concurrent.Transactional.Channel.Round (
 
 import Control.Concurrent.Transactional.Channel.Swap
 import Control.Concurrent.Transactional.Event
+import Data.List.Util
 
 import Control.Applicative ((<$), (<$>), (<|>))
-import Control.Arrow (second)
 import Control.Monad (replicateM, forM, guard)
 import Data.Unique (Unique)
 
@@ -51,7 +51,3 @@ server (RoundChannel count channel) value = do
         let values = map fst remaining
         sendFront response (value:values)
         return value'
-
-deletions :: [a] -> [(a, [a])]
-deletions [] = []
-deletions (x:xs) = (x, xs) : map (second (x :)) (deletions xs)

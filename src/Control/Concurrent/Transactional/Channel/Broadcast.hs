@@ -5,9 +5,9 @@ module Control.Concurrent.Transactional.Channel.Broadcast (
 
 import Control.Concurrent.Transactional.Event
 import Control.Concurrent.Transactional.EventHandle
+import Data.List.Util
 
 import Control.Applicative ((<$>), (<$), (<|>))
-import Control.Arrow (second)
 import Control.Monad (forM, msum)
 
 data BroadcastChannel i o = Broadcast {
@@ -59,7 +59,3 @@ newBroadcastChannel = do
                 listen = wrapEvent listenerHandle . wrapEvent handle . receiveListener
             }
     }
-
-deletions :: [a] -> [(a, [a])]
-deletions [] = []
-deletions (x:xs) = (x, xs) : map (second (x :)) (deletions xs)
