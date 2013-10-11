@@ -1,8 +1,8 @@
-module Control.Concurrent.Hannel.Var.Class (
+module Control.Concurrent.Transactional.Var.Class (
     Var (putVar, takeVar)
 ) where
 
-import Control.Concurrent.Hannel.Event
+import Control.Concurrent.Transactional.Event
 
 -- |Describes a variable that supports concurrent operations.
 class Var v where

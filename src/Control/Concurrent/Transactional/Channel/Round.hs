@@ -1,11 +1,11 @@
 {-# LANGUAGE Safe #-}
 
-module Control.Concurrent.Hannel.Channel.Round (
+module Control.Concurrent.Transactional.Channel.Round (
     RoundChannel (), newRoundChannel, swapRound, signalRound
 ) where
 
-import Control.Concurrent.Hannel.Channel.Swap
-import Control.Concurrent.Hannel.Event
+import Control.Concurrent.Transactional.Channel.Swap
+import Control.Concurrent.Transactional.Event
 
 import Control.Applicative ((<$), (<$>), (<|>))
 import Control.Arrow (second)

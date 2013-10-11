@@ -1,13 +1,13 @@
 {-# LANGUAGE Safe #-}
 
-module Control.Concurrent.Hannel.Event.Trail (
+module Control.Concurrent.Transactional.Event.Trail (
     Trail (), TrailElement (..),
     newTrail, extend, complete,
     commitSets, trailID,
     isActive, isCoherent
 ) where
 
-import Control.Concurrent.Hannel.Event.SyncLock
+import Control.Concurrent.Transactional.Event.SyncLock
 
 import Control.Monad (guard)
 import Control.Monad.Trans (liftIO)

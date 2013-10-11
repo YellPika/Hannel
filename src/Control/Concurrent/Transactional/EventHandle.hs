@@ -1,10 +1,10 @@
 {-# LANGUAGE Safe #-}
 
-module Control.Concurrent.Hannel.EventHandle (
+module Control.Concurrent.Transactional.EventHandle (
     EventHandle (), newEventHandle, wrapEvent
 ) where
 
-import Control.Concurrent.Hannel.Event.Base
+import Control.Concurrent.Transactional.Event.Base
 
 import Control.Monad (void)
 import Data.IORef (IORef, newIORef, mkWeakIORef)

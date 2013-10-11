@@ -1,11 +1,11 @@
 {-# LANGUAGE DoAndIfThenElse #-}
 {-# LANGUAGE Trustworthy #-}
 
-module Control.Concurrent.Hannel.Event.Time (
+module Control.Concurrent.Transactional.Event.Time (
     timeout, timeoutAt, delayFor, delayUntil
 ) where
 
-import Control.Concurrent.Hannel.Event.Base
+import Control.Concurrent.Transactional.Event.Base
 
 import Control.Concurrent (yield)
 import Control.Applicative ((<|>))

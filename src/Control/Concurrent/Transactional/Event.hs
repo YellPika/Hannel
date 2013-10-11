@@ -1,9 +1,9 @@
 {-# LANGUAGE DoAndIfThenElse #-}
 {-# LANGUAGE Safe #-}
 
-module Control.Concurrent.Hannel.Event (
+module Control.Concurrent.Transactional.Event (
     Event,
-    module Control.Concurrent.Hannel.Event.Class,
+    module Control.Concurrent.Transactional.Event.Class,
 
     -- * Synchronization
     sync, syncID,
@@ -18,16 +18,16 @@ module Control.Concurrent.Hannel.Event (
     forkEvent, forkEventCancel, forkEventHandle, forkServer,
 
     -- * Time
-    module Control.Concurrent.Hannel.Event.Time,
+    module Control.Concurrent.Transactional.Event.Time,
 
     -- * Unsafe
     unsafeLiftIO,
 ) where
 
-import Control.Concurrent.Hannel.Event.Base
-import Control.Concurrent.Hannel.Event.Class
-import Control.Concurrent.Hannel.Event.Time
-import Control.Concurrent.Hannel.EventHandle
+import Control.Concurrent.Transactional.Event.Base
+import Control.Concurrent.Transactional.Event.Class
+import Control.Concurrent.Transactional.Event.Time
+import Control.Concurrent.Transactional.EventHandle
 
 import Control.Applicative ((<|>))
 import Control.Monad (join, msum)

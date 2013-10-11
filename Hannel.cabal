@@ -11,23 +11,23 @@ build-type:          Simple
 cabal-version:       >=1.8
 
 library
-  exposed-modules:     Control.Concurrent.Hannel.Channel,
-                       Control.Concurrent.Hannel.Channel.Broadcast,
-                       Control.Concurrent.Hannel.Channel.Round,
-                       Control.Concurrent.Hannel.Channel.Swap,
-                       Control.Concurrent.Hannel.Event,
-                       Control.Concurrent.Hannel.Event.Class,
-                       Control.Concurrent.Hannel.EventHandle,
-                       Control.Concurrent.Hannel.Var,
-                       Control.Concurrent.Hannel.Var.Buffer,
-                       Control.Concurrent.Hannel.Var.Class,
-                       Control.Concurrent.Hannel.Var.Mutable,
-                       Control.Concurrent.Hannel.Var.Immutable
+  exposed-modules:     Control.Concurrent.Transactional.Channel,
+                       Control.Concurrent.Transactional.Channel.Broadcast,
+                       Control.Concurrent.Transactional.Channel.Round,
+                       Control.Concurrent.Transactional.Channel.Swap,
+                       Control.Concurrent.Transactional.Event,
+                       Control.Concurrent.Transactional.Event.Class,
+                       Control.Concurrent.Transactional.EventHandle,
+                       Control.Concurrent.Transactional.Var,
+                       Control.Concurrent.Transactional.Var.Buffer,
+                       Control.Concurrent.Transactional.Var.Class,
+                       Control.Concurrent.Transactional.Var.Mutable,
+                       Control.Concurrent.Transactional.Var.Immutable
 
-  other-modules:       Control.Concurrent.Hannel.Event.Base,
-                       Control.Concurrent.Hannel.Event.SyncLock,
-                       Control.Concurrent.Hannel.Event.Time,
-                       Control.Concurrent.Hannel.Event.Trail
+  other-modules:       Control.Concurrent.Transactional.Event.Base,
+                       Control.Concurrent.Transactional.Event.SyncLock,
+                       Control.Concurrent.Transactional.Event.Time,
+                       Control.Concurrent.Transactional.Event.Trail
 
   build-depends:       base >= 4 && < 5, array, containers, mtl, random, time
   hs-source-dirs:      src

@@ -1,6 +1,6 @@
 {-# LANGUAGE Safe #-}
 
-module Control.Concurrent.Hannel.Channel.Swap (
+module Control.Concurrent.Transactional.Channel.Swap (
     SwapChannel (), newSwapChannel,
     swapFront, swapBack,
     signalFront, signalBack,
@@ -8,7 +8,7 @@ module Control.Concurrent.Hannel.Channel.Swap (
     receiveFront, receiveBack
 ) where
 
-import Control.Concurrent.Hannel.Event
+import Control.Concurrent.Transactional.Event
 
 -- |A one-to-one synchronous swap channel.
 data SwapChannel f b = SwapChannel (f -> Event b) (b -> Event f)

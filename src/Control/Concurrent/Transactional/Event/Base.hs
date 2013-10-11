@@ -1,12 +1,12 @@
 {-# LANGUAGE DoAndIfThenElse #-}
 {-# LANGUAGE Safe #-}
 
-module Control.Concurrent.Hannel.Event.Base (
+module Control.Concurrent.Transactional.Event.Base (
     Event (), forkEvent, sync, syncID, swap, unsafeLiftIO
 ) where
 
-import Control.Concurrent.Hannel.Event.SyncLock
-import Control.Concurrent.Hannel.Event.Trail
+import Control.Concurrent.Transactional.Event.SyncLock
+import Control.Concurrent.Transactional.Event.Trail
 
 import Control.Applicative (Applicative, Alternative, empty, (<|>), pure, (<*>))
 import Control.Concurrent (forkIO)

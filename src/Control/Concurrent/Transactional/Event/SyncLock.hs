@@ -1,7 +1,7 @@
 {-# LANGUAGE DoAndIfThenElse #-}
 {-# LANGUAGE Safe #-}
 
-module Control.Concurrent.Hannel.Event.SyncLock (
+module Control.Concurrent.Transactional.Event.SyncLock (
     SyncLock (), newSyncLock, identifier, isSynced, syncAll
 ) where
 

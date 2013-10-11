@@ -1,12 +1,12 @@
 {-# LANGUAGE Safe #-}
 
-module Control.Concurrent.Hannel.Var.Mutable (
+module Control.Concurrent.Transactional.Var.Mutable (
     MVar (), newMVar, newEmptyMVar, putMVar, takeMVar
 ) where
 
-import Control.Concurrent.Hannel.Event
-import Control.Concurrent.Hannel.EventHandle
-import Control.Concurrent.Hannel.Var.Class
+import Control.Concurrent.Transactional.Event
+import Control.Concurrent.Transactional.EventHandle
+import Control.Concurrent.Transactional.Var.Class
 
 import Data.Functor ((<$>), (<$))
 

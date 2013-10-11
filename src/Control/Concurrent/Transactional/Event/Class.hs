@@ -2,11 +2,11 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE Safe #-}
 
-module Control.Concurrent.Hannel.Event.Class (
+module Control.Concurrent.Transactional.Event.Class (
     MonadEvent (liftEvent)
 ) where
 
-import Control.Concurrent.Hannel.Event.Base
+import Control.Concurrent.Transactional.Event.Base
 
 import Control.Monad (MonadPlus)
 import Control.Monad.Trans (MonadTrans, lift)

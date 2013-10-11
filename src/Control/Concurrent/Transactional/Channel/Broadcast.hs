@@ -1,10 +1,10 @@
-module Control.Concurrent.Hannel.Channel.Broadcast (
+module Control.Concurrent.Transactional.Channel.Broadcast (
     BroadcastChannel (), newBroadcastChannel, broadcast, enroll,
     BroadcastListener (), listen
 ) where
 
-import Control.Concurrent.Hannel.Event
-import Control.Concurrent.Hannel.EventHandle
+import Control.Concurrent.Transactional.Event
+import Control.Concurrent.Transactional.EventHandle
 
 import Control.Applicative ((<$>), (<$), (<|>))
 import Control.Arrow (second)

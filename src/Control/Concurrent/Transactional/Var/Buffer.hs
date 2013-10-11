@@ -1,12 +1,12 @@
 {-# LANGUAGE Safe #-}
 
-module Control.Concurrent.Hannel.Var.Buffer (
+module Control.Concurrent.Transactional.Var.Buffer (
     BVar, newBVar, putBVar, takeBVar
 ) where
 
-import Control.Concurrent.Hannel.Event
-import Control.Concurrent.Hannel.EventHandle
-import Control.Concurrent.Hannel.Var.Class
+import Control.Concurrent.Transactional.Event
+import Control.Concurrent.Transactional.EventHandle
+import Control.Concurrent.Transactional.Var.Class
 
 import Control.Applicative ((<|>), (<$>), (<$))
 import Data.Sequence ((|>), ViewL ((:<)))
