@@ -11,7 +11,7 @@ import Control.Concurrent.Singular.Primitive.Status
 
 import Control.Applicative ((<$>), (<*>))
 import Control.Concurrent (yield)
-import Control.Concurrent.MVar (MVar, newEmptyMVar, withMVar)
+import Control.Concurrent.MVar (MVar, newMVar, withMVar)
 import Control.Monad (unless)
 import Data.IORef (IORef, newIORef, readIORef, atomicModifyIORef')
 
@@ -22,7 +22,7 @@ data Condition = Condition !(MVar ())
                            !(IORef [Listener])
 
 newCondition :: IO Condition
-newCondition = Condition <$> newEmptyMVar
+newCondition = Condition <$> newMVar ()
                          <*> newIORef False
                          <*> newIORef []
 

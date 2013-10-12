@@ -9,7 +9,7 @@ import Control.Concurrent.Singular.Primitive.Status
 
 import Control.Applicative ((<$), (<$>), (<*>))
 import Control.Concurrent (yield)
-import Control.Concurrent.MVar (MVar, newEmptyMVar, withMVar)
+import Control.Concurrent.MVar (MVar, newMVar, withMVar)
 import Data.IORef (IORef, newIORef, readIORef, atomicModifyIORef')
 import Data.Sequence (Seq, (><), (<|), (|>), ViewL (..))
 import qualified Data.Sequence as Seq
@@ -22,7 +22,7 @@ data Channel f b = Channel !(MVar ())
                            !(Queue (QueueItem b f))
 
 newChannel :: IO (Channel i o)
-newChannel = Channel <$> newEmptyMVar
+newChannel = Channel <$> newMVar ()
                      <*> newEmptyQueue
                      <*> newEmptyQueue
 

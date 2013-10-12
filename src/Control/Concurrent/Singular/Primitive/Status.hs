@@ -11,7 +11,7 @@ module Control.Concurrent.Singular.Primitive.Status (
 import GHC.IO (IO (..))
 import GHC.Prim (RealWorld, MutVar#, newMutVar#, readMutVar#, writeMutVar#, casMutVar#, sameMutVar#)
 
-data Status = Waiting | Claimed | Synced deriving Eq
+data Status = Waiting | Claimed | Synced deriving (Eq, Show)
 
 data StatusRef = StatusRef {
     unStatusRef :: MutVar# RealWorld Status
