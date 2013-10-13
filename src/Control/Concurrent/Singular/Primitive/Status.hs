@@ -8,7 +8,6 @@ module Control.Concurrent.Singular.Primitive.Status (
     readStatusRef, writeStatusRef, casStatusRef
 ) where
 
-import Control.Monad.Trans (MonadIO, liftIO)
 import GHC.IO (IO (..))
 import GHC.Prim (RealWorld, MutVar#, newMutVar#, readMutVar#, writeMutVar#, casMutVar#, sameMutVar#)
 
@@ -21,22 +20,22 @@ data StatusRef = StatusRef {
 instance Eq StatusRef where
     x == y = sameMutVar# (unStatusRef x) (unStatusRef y)
 
-newStatusRef :: MonadIO m => m StatusRef
-newStatusRef = liftIO $ IO $ \s ->
+newStatusRef :: IO StatusRef
+newStatusRef = IO $ \s ->
     case newMutVar# Waiting s of
         (# s', x #) -> (# s', StatusRef x #)
 
-readStatusRef :: MonadIO m => StatusRef -> m Status
-readStatusRef (StatusRef ref) = liftIO $ IO $ \s ->
+readStatusRef :: StatusRef -> IO Status
+readStatusRef (StatusRef ref) = IO $ \s ->
     case readMutVar# ref s of
         (# s', x #) -> (# s', x #)
 
-writeStatusRef :: MonadIO m => StatusRef -> Status -> m ()
-writeStatusRef (StatusRef ref) value = liftIO $ IO $ \s ->
+writeStatusRef :: StatusRef -> Status -> IO ()
+writeStatusRef (StatusRef ref) value = IO $ \s ->
     case writeMutVar# ref value s of
         s' -> (# s', () #)
 
-casStatusRef :: MonadIO m => StatusRef -> Status -> Status -> m Status
-casStatusRef (StatusRef ref) comparand value = liftIO $ IO $ \s ->
+casStatusRef :: StatusRef -> Status -> Status -> IO Status
+casStatusRef (StatusRef ref) comparand value = IO $ \s ->
     case casMutVar# ref comparand value s of
         (# s', _, x #) -> (# s', x #)
