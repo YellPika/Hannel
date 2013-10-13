@@ -10,6 +10,7 @@ module Control.Concurrent.Singular.Event (
 import qualified Control.Concurrent.Singular.Primitive.Condition as Primitive
 import qualified Control.Concurrent.Singular.Primitive.Event as Primitive
 
+import Control.Arrow (first, second)
 import Data.Monoid (Monoid, mempty, mappend)
 
 type PEvent = Primitive.Event
@@ -39,27 +40,23 @@ withNack selector = guard $ do
     return $ wrapAbort action event
 
 wrapAbort :: IO () -> Event a -> Event a
-wrapAbort action source = Event $ do
-    (nacks, event) <- runEvent source
-    return (action:nacks, event)
+wrapAbort action = Event . fmap (first (action :)) . runEvent
 
 wrap :: (a -> IO b) -> Event a -> Event b
-wrap f x = Event $ do
-    (nacks, event) <- runEvent x
-    return (nacks, fmap (\(nacks', g) -> (nacks', g >>= f)) event)
+wrap f = Event . fmap (second (fmap (second (>>= f)))) . runEvent
 
 instance Functor Event where
     fmap f = wrap (return . f)
 
 instance Monoid (Event a) where
-    mempty = Event { runEvent = return ([], mempty) }
-    mappend first second = Event $ do
-        (conds1, event1) <- runEvent first
-        (conds2, event2) <- runEvent second
+    mempty = Event $ return ([], mempty)
+    mappend x y = Event $ do
+        (conds1, event1) <- runEvent x
+        (conds2, event2) <- runEvent y
         let conds = conds1 ++ conds2
-        let choice1 = fmap (\(conds', action) -> (conds' ++ conds2, action)) event1
-        let choice2 = fmap (\(conds', action) -> (conds' ++ conds1, action)) event2
-        let event = mappend choice1 choice2
+            choice1 = fmap (first (++ conds2)) event1
+            choice2 = fmap (first (++ conds1)) event2
+            event = mappend choice1 choice2
         return (conds, event)
 
 sync :: Event a -> IO a
