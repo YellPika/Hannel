@@ -9,30 +9,28 @@ import Control.Concurrent.Singular.Primitive.Status
 import Data.List.Util
 
 import Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar)
+import Control.Monad.Trans.Maybe (MaybeT, runMaybeT)
 import Data.Monoid (Monoid, mempty, mappend)
 
 data BaseEvent a = BaseEvent {
     poll :: !(IO Bool),
-    commit :: !(IO (Maybe a)),
+    commit :: !(MaybeT IO a),
     block :: StatusRef -> (a -> IO ()) -> IO ()
 }
 
 instance Functor BaseEvent where
     fmap f x = x {
-        commit = fmap (fmap f) $ commit x,
+        commit = fmap f $ commit x,
         block = \status handler -> block x status (handler . f)
     }
 
 newtype Event a = Event { unEvent :: [BaseEvent a] }
 
-newEvent :: IO Bool -> IO (Maybe a) -> (StatusRef -> (a -> IO ()) -> IO ()) -> Event a
+newEvent :: IO Bool -> MaybeT IO a -> (StatusRef -> (a -> IO ()) -> IO ()) -> Event a
 newEvent poll' commit' block' = Event [BaseEvent poll' commit' block']
 
 always :: a -> Event a
-always x = newEvent
-    (return True)
-    (return $ Just x)
-    (\ _ _ -> return ()) -- Should never actually be executed.
+always x = newEvent (return True) (return x) (\ _ _ -> return ())
 
 instance Functor Event where
     fmap f = Event . map (fmap f) . unEvent
@@ -50,7 +48,7 @@ sync (Event bases) = shuffle bases >>= poll'
 
         result <- poll x
         if result
-        then commit x >>= maybe continue return
+        then runMaybeT (commit x) >>= maybe continue return
         else continue
     block' = do
         status <- newStatusRef
