@@ -3,16 +3,18 @@
 module Control.Concurrent.Singular.Event (
     Event (), fromPrimitive,
     always,
-    guard, withNack, wrap,
+    guard, withNack, wrapAbort, wrap,
     sync
 ) where
 
 import qualified Control.Concurrent.Singular.Primitive.Condition as Primitive
 import qualified Control.Concurrent.Singular.Primitive.Event as Primitive
 
+import Control.Concurrent (forkIO)
+import Control.Monad (void)
 import Data.Monoid (Monoid, mempty, mappend)
 
-type PCondition = Primitive.Condition
+type PCondition = Primitive.Condition ()
 type PEvent = Primitive.Event
 
 newtype Event a = Event {
@@ -30,11 +32,19 @@ always = fromPrimitive . Primitive.always
 guard :: IO (Event a) -> Event a
 guard event = Event (event >>= runEvent)
 
-withNack :: (Event () -> Event a) -> Event a
+withNack :: (Event () -> IO (Event a)) -> Event a
 withNack selector = Event $ do
     cond <- Primitive.newCondition
-    (conds, event) <- runEvent $ selector $ fromPrimitive $ Primitive.wait cond
+    source <- selector $ fromPrimitive $ Primitive.wait cond
+    (conds, event) <- runEvent source
     return (cond:conds, event)
+
+wrapAbort :: IO () -> Event a -> Event a
+wrapAbort action source = withNack $ \nack -> do
+    void $ forkIO $ do
+        sync nack
+        action
+    return source
 
 wrap :: (a -> IO b) -> Event a -> Event b
 wrap f x = Event $ do
@@ -59,5 +69,5 @@ sync :: Event a -> IO a
 sync event = do
     (_, base) <- runEvent event
     (conds, action) <- Primitive.sync base
-    mapM_ Primitive.signal conds
+    mapM_ (`Primitive.signal` ()) conds
     action

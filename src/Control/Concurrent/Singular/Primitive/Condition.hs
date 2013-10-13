@@ -9,50 +9,43 @@ module Control.Concurrent.Singular.Primitive.Condition (
 import Control.Concurrent.Singular.Primitive.Event
 import Control.Concurrent.Singular.Primitive.Status
 
-import Control.Applicative ((<$>), (<*>))
+import Control.Applicative ((<$>), (<$))
+import Control.Arrow (first)
 import Control.Concurrent (yield)
-import Control.Concurrent.MVar (MVar, newMVar, withMVar)
-import Control.Monad (unless)
+import Control.Monad.Fix (mfix)
 import Data.IORef (IORef, newIORef, readIORef, atomicModifyIORef')
+import Data.Maybe (fromMaybe, isJust)
 
-type Listener = (StatusRef, IO ())
+type Listener a = (StatusRef, a -> IO ())
 
-data Condition = Condition !(MVar ())
-                           !(IORef Bool)
-                           !(IORef [Listener])
+newtype Condition a = Condition (IORef (Maybe a, [Listener a]))
 
-newCondition :: IO Condition
-newCondition = Condition <$> newMVar ()
-                         <*> newIORef False
-                         <*> newIORef []
+newCondition :: IO (Condition a)
+newCondition = Condition <$> newIORef (Nothing, [])
 
-signal :: Condition -> IO ()
-signal (Condition lock value listeners) = do
-    signaled <- withMVar lock $ const $
-        atomicModifyIORef' value (True,)
-
-    unless signaled $ do
-        listeners' <- atomicModifyIORef' listeners ([],)
-        mapM_ sync' listeners'
-
-wait :: Condition -> Event ()
-wait (Condition lock value listeners) = newEvent poll commit block
+signal :: Condition a -> a -> IO ()
+signal (Condition state) value =
+    atomicModifyIORef' state (first modify) >>=
+    mapM_ (`send` value)
   where
-    poll = readIORef value
-    commit = return $ Just ()
-    block status handler = withMVar lock $ \_ -> do
-        let listener = (status, handler ())
+    modify = (, []) . Just . fromMaybe value
 
-        signaled <- poll
+wait :: Condition a -> Event a
+wait (Condition state) = newEvent poll commit block
+  where
+    poll = isJust <$> commit
+    commit = fst <$> readIORef state
+    block status handler =
+        atomicModifyIORef' state inspect >>=
+        maybe (return ()) (send listener)
+      where
+        listener = (status, handler)
+        inspect (x, ls) = ((x, maybe (listener:ls) (const ls) x), x)
 
-        if signaled
-        then sync' listener
-        else atomicModifyIORef' listeners ((, ()) . (listener :))
-
-sync' :: Listener -> IO ()
-sync' listener@(status, handler) = do
+send :: Listener a -> a -> IO ()
+send (status, handler) value = mfix $ \output -> do
     result <- casStatusRef status Waiting Synced
     case result of
-        Waiting -> handler
-        Claimed -> yield >> sync' listener
+        Waiting -> handler value
+        Claimed -> output <$ yield
         Synced -> return ()
