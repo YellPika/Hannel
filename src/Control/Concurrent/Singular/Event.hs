@@ -2,6 +2,7 @@
 
 module Control.Concurrent.Singular.Event (
     Event (),
+
     -- * Synchronization
     sync,
 

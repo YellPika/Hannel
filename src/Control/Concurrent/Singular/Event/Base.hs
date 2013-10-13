@@ -10,6 +10,7 @@ import Control.Concurrent.Singular.Event.Status (StatusRef)
 import qualified Control.Concurrent.Singular.Event.Primitive as Primitive
 
 import Control.Arrow (first, second)
+import Control.Monad.Trans (MonadIO, liftIO)
 import Data.Monoid (Monoid, mempty, mappend)
 
 newtype Event a = Event {
@@ -20,9 +21,7 @@ newEvent :: IO Bool -> IO (Maybe a) -> (StatusRef -> (a -> IO ()) -> IO ()) -> E
 newEvent poll commit block = fromPrimitive $ Primitive.newEvent poll commit block
 
 fromPrimitive :: Primitive.Event a -> Event a
-fromPrimitive event = Event {
-    runEvent = return ([], fmap (\x -> ([], return x)) event)
-}
+fromPrimitive event = Event $ return ([], fmap (\x -> ([], return x)) event)
 
 always :: a -> Event a
 always = fromPrimitive . Primitive.always
@@ -50,8 +49,8 @@ instance Monoid (Event a) where
             event = mappend choice1 choice2
         return (conds, event)
 
-sync :: Event a -> IO a
-sync event = do
+sync :: MonadIO m => Event a -> m a
+sync event = liftIO $ do
     (_, base) <- runEvent event
     (nacks, action) <- Primitive.sync base
     sequence_ nacks
