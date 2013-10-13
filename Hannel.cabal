@@ -13,10 +13,7 @@ cabal-version:       >=1.8
 library
   exposed-modules:     Control.Concurrent.Singular.Channel,
                        Control.Concurrent.Singular.Event,
-                       Control.Concurrent.Singular.Primitive.Channel,
-                       Control.Concurrent.Singular.Primitive.Condition,
-                       Control.Concurrent.Singular.Primitive.Event,
-                       Control.Concurrent.Singular.Primitive.Status,
+                       Control.Concurrent.Singular.IVar,
                        Control.Concurrent.Transactional.Channel,
                        Control.Concurrent.Transactional.Channel.Broadcast,
                        Control.Concurrent.Transactional.Channel.Round,
@@ -29,7 +26,10 @@ library
                        Control.Concurrent.Transactional.Var.Class,
                        Control.Concurrent.Transactional.Var.Mutable,
                        Control.Concurrent.Transactional.Var.Immutable
-  other-modules:       Control.Concurrent.Transactional.Event.Base,
+  other-modules:       Control.Concurrent.Singular.Event.Base,
+                       Control.Concurrent.Singular.Event.Primitive,
+                       Control.Concurrent.Singular.Event.Status,
+                       Control.Concurrent.Transactional.Event.Base,
                        Control.Concurrent.Transactional.Event.SyncLock,
                        Control.Concurrent.Transactional.Event.Time,
                        Control.Concurrent.Transactional.Event.Trail,

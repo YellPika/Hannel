@@ -2,12 +2,12 @@
 {-# LANGUAGE DoAndIfThenElse #-}
 {-# LANGUAGE TupleSections #-}
 
-module Control.Concurrent.Singular.Primitive.Condition (
-    Condition (), newCondition, signal, wait
+module Control.Concurrent.Singular.IVar (
+    IVar (), newIVar, putIVar, takeIVar
 ) where
 
-import Control.Concurrent.Singular.Primitive.Event
-import Control.Concurrent.Singular.Primitive.Status
+import Control.Concurrent.Singular.Event.Base
+import Control.Concurrent.Singular.Event.Status
 
 import Control.Applicative ((<$>), (<$))
 import Control.Arrow (first)
@@ -18,20 +18,20 @@ import Data.Maybe (fromMaybe, isJust)
 
 type Listener a = (StatusRef, a -> IO ())
 
-newtype Condition a = Condition (IORef (Maybe a, [Listener a]))
+newtype IVar a = IVar (IORef (Maybe a, [Listener a]))
 
-newCondition :: IO (Condition a)
-newCondition = Condition <$> newIORef (Nothing, [])
+newIVar :: IO (IVar a)
+newIVar = IVar <$> newIORef (Nothing, [])
 
-signal :: Condition a -> a -> IO ()
-signal (Condition state) value =
+putIVar :: IVar a -> a -> IO ()
+putIVar (IVar state) value =
     atomicModifyIORef' state (first modify) >>=
     mapM_ (`send` value)
   where
     modify = (, []) . Just . fromMaybe value
 
-wait :: Condition a -> Event a
-wait (Condition state) = newEvent poll commit block
+takeIVar :: IVar a -> Event a
+takeIVar (IVar state) = newEvent poll commit block
   where
     poll = isJust <$> commit
     commit = fst <$> readIORef state

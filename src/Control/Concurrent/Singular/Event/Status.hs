@@ -2,7 +2,7 @@
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE UnboxedTuples #-}
 
-module Control.Concurrent.Singular.Primitive.Status (
+module Control.Concurrent.Singular.Event.Status (
     Status (..),
     StatusRef (), newStatusRef,
     readStatusRef, writeStatusRef, casStatusRef

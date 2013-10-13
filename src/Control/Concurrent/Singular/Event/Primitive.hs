@@ -1,11 +1,11 @@
 {-# LANGUAGE Safe #-}
 {-# LANGUAGE DoAndIfThenElse #-}
 
-module Control.Concurrent.Singular.Primitive.Event (
+module Control.Concurrent.Singular.Event.Primitive (
     Event (), newEvent, always, sync
 ) where
 
-import Control.Concurrent.Singular.Primitive.Status
+import Control.Concurrent.Singular.Event.Status
 import Data.List.Util
 
 import Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar)
