@@ -46,7 +46,7 @@ commit (Channel lock _ back) input =
   where
     commit' = dequeue back >>= sync'
     sync' item@(status, handler, output) = do
-        result <- liftIO $ casStatusRef status Waiting Synced
+        result <- casStatusRef status Waiting Synced
         case result of
             Synced -> commit'
             Claimed -> liftIO yield >> sync' item
