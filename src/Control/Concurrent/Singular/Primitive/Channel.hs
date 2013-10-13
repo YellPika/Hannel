@@ -10,8 +10,6 @@ import Control.Concurrent.Singular.Primitive.Status
 import Control.Applicative ((<$), (<$>), (<*>))
 import Control.Concurrent (yield)
 import Control.Concurrent.MVar (MVar, newMVar, withMVar)
-import Control.Monad.Trans (liftIO)
-import Control.Monad.Trans.Maybe (MaybeT (..), runMaybeT)
 import Data.IORef (IORef, newIORef, readIORef, atomicModifyIORef')
 import Data.Sequence (Seq, (><), (<|), (|>), ViewL (..))
 import qualified Data.Sequence as Seq
@@ -40,17 +38,19 @@ swapBack (Channel lock front back) = swapFront (Channel lock back front)
 poll :: Channel i o -> IO Bool
 poll (Channel _ _ back) = not <$> Seq.null <$> readIORef back
 
-commit :: Channel i o -> i -> MaybeT IO o
+commit :: Channel i o -> i -> IO (Maybe o)
 commit (Channel lock _ back) input =
-    MaybeT $ withMVar lock $ const $ runMaybeT commit'
+    withMVar lock $ const commit'
   where
-    commit' = dequeue back >>= sync'
+    commit' =
+        dequeue back >>=
+        maybe (return Nothing) sync'
     sync' item@(status, handler, output) = do
-        result <- liftIO $ casStatusRef status Waiting Synced
+        result <- casStatusRef status Waiting Synced
         case result of
             Synced -> commit'
-            Claimed -> liftIO yield >> sync' item
-            Waiting -> output <$ liftIO (handler input)
+            Claimed -> yield >> sync' item
+            Waiting -> Just output <$ handler input
 
 block :: Channel i o -> QueueItem i o -> IO ()
 block (Channel lock front back) item@(status, handler, value) =
@@ -85,8 +85,8 @@ newEmptyQueue = newIORef Seq.empty
 enqueue :: a -> Queue a -> IO ()
 enqueue value = flip atomicModifyIORef' $ \queue -> (queue |> value, ())
 
-dequeue :: Queue a -> MaybeT IO a
-dequeue queue = MaybeT $ atomicModifyIORef' queue (dequeue' . Seq.viewl)
+dequeue :: Queue a -> IO (Maybe a)
+dequeue queue = atomicModifyIORef' queue (dequeue' . Seq.viewl)
   where
     dequeue' Seq.EmptyL = (Seq.empty, Nothing)
     dequeue' (x :< xs) = (xs, Just x)

@@ -13,7 +13,6 @@ import Control.Applicative ((<$>), (<$))
 import Control.Arrow (first)
 import Control.Concurrent (yield)
 import Control.Monad.Fix (mfix)
-import Control.Monad.Trans.Maybe (MaybeT (..))
 import Data.IORef (IORef, newIORef, readIORef, atomicModifyIORef')
 import Data.Maybe (fromMaybe, isJust)
 
@@ -34,8 +33,8 @@ signal (Condition state) value =
 wait :: Condition a -> Event a
 wait (Condition state) = newEvent poll commit block
   where
-    poll = isJust <$> fst <$> readIORef state
-    commit = MaybeT $ fst <$> readIORef state
+    poll = isJust <$> commit
+    commit = fst <$> readIORef state
     block status handler =
         atomicModifyIORef' state inspect >>=
         maybe (return ()) (send listener)
