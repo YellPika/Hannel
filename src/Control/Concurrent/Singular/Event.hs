@@ -10,11 +10,8 @@ module Control.Concurrent.Singular.Event (
 import qualified Control.Concurrent.Singular.Primitive.Condition as Primitive
 import qualified Control.Concurrent.Singular.Primitive.Event as Primitive
 
-import Control.Concurrent (forkIO)
-import Control.Monad (void)
 import Data.Monoid (Monoid, mempty, mappend)
 
-type PCondition = Primitive.Condition ()
 type PEvent = Primitive.Event
 
 newtype Event a = Event {
@@ -32,31 +29,24 @@ always = fromPrimitive . Primitive.always
 guard :: IO (Event a) -> Event a
 guard event = Event (event >>= runEvent)
 
-withNack :: (Event () -> IO (Event a)) -> Event a
+withNack :: (Event () -> Event a) -> Event a
 withNack selector = guard $ do
     cond <- Primitive.newCondition
-    wrapAbort (`Primitive.signal` ())
-              (guard $ selector $ fromPrimitive $ Primitive.wait cond)
--- Event $ do
---     cond <- Primitive.newCondition
---     source <- selector $ fromPrimitive $ Primitive.wait cond
---     (conds, event) <- runEvent source
---     return (cond:conds, event)
+
+    let action = Primitive.signal cond ()
+        event = selector $ fromPrimitive $ Primitive.wait cond
+
+    return $ wrapAbort action event
 
 wrapAbort :: IO () -> Event a -> Event a
 wrapAbort action source = Event $ do
-    (conds, event) <- runEvent source
-    return (action:conds, source)
--- withNack $ \nack -> do
---     void $ forkIO $ do
---         sync nack
---         action
---     return source
+    (nacks, event) <- runEvent source
+    return (action:nacks, event)
 
 wrap :: (a -> IO b) -> Event a -> Event b
 wrap f x = Event $ do
-    (conds, event) <- runEvent x
-    return (conds, fmap (\(conds', g) -> (conds', g >>= f)) event)
+    (nacks, event) <- runEvent x
+    return (nacks, fmap (\(nacks', g) -> (nacks', g >>= f)) event)
 
 instance Functor Event where
     fmap f = wrap (return . f)
@@ -75,7 +65,6 @@ instance Monoid (Event a) where
 sync :: Event a -> IO a
 sync event = do
     (_, base) <- runEvent event
-    (conds, action) <- Primitive.sync base
-    sequence_ conds
-    --mapM_ (`Primitive.signal` ()) conds
+    (nacks, action) <- Primitive.sync base
+    sequence_ nacks
     action
