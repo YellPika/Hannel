@@ -18,7 +18,7 @@ type PCondition = Primitive.Condition ()
 type PEvent = Primitive.Event
 
 newtype Event a = Event {
-    runEvent :: IO ([PCondition], PEvent ([PCondition], IO a))
+    runEvent :: IO ([IO ()], PEvent ([IO ()], IO a))
 }
 
 fromPrimitive :: PEvent a -> Event a
@@ -33,18 +33,25 @@ guard :: IO (Event a) -> Event a
 guard event = Event (event >>= runEvent)
 
 withNack :: (Event () -> IO (Event a)) -> Event a
-withNack selector = Event $ do
+withNack selector = guard $ do
     cond <- Primitive.newCondition
-    source <- selector $ fromPrimitive $ Primitive.wait cond
-    (conds, event) <- runEvent source
-    return (cond:conds, event)
+    wrapAbort (`Primitive.signal` ())
+              (guard $ selector $ fromPrimitive $ Primitive.wait cond)
+-- Event $ do
+--     cond <- Primitive.newCondition
+--     source <- selector $ fromPrimitive $ Primitive.wait cond
+--     (conds, event) <- runEvent source
+--     return (cond:conds, event)
 
 wrapAbort :: IO () -> Event a -> Event a
-wrapAbort action source = withNack $ \nack -> do
-    void $ forkIO $ do
-        sync nack
-        action
-    return source
+wrapAbort action source = Event $ do
+    (conds, event) <- runEvent source
+    return (action:conds, source)
+-- withNack $ \nack -> do
+--     void $ forkIO $ do
+--         sync nack
+--         action
+--     return source
 
 wrap :: (a -> IO b) -> Event a -> Event b
 wrap f x = Event $ do
@@ -69,5 +76,6 @@ sync :: Event a -> IO a
 sync event = do
     (_, base) <- runEvent event
     (conds, action) <- Primitive.sync base
-    mapM_ (`Primitive.signal` ()) conds
+    sequence_ conds
+    --mapM_ (`Primitive.signal` ()) conds
     action
