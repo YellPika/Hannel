@@ -14,7 +14,7 @@ import Control.Arrow (first)
 import Control.Concurrent (yield)
 import Control.Monad.Fix (mfix)
 import Data.IORef (IORef, newIORef, readIORef, atomicModifyIORef')
-import Data.Maybe (fromMaybe, isJust)
+import Data.Maybe (fromMaybe)
 
 type Listener a = (StatusRef, a -> IO ())
 
@@ -31,9 +31,8 @@ putIVar (IVar state) value =
     modify = (, []) . Just . fromMaybe value
 
 takeIVar :: IVar a -> Event a
-takeIVar (IVar state) = newEvent poll commit block
+takeIVar (IVar state) = newEvent commit block
   where
-    poll = isJust <$> commit
     commit = fst <$> readIORef state
     block status handler =
         atomicModifyIORef' state inspect >>=

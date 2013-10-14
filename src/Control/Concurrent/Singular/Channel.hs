@@ -28,19 +28,18 @@ newChannel = Channel <$> newMVar ()
 
 swapFront :: Channel i o -> i -> Event o
 swapFront channel value = newEvent
-    (poll channel)
     (commit channel value)
     (\status handler -> block channel (status, handler, value))
 
 swapBack :: Channel i o -> o -> Event i
 swapBack (Channel lock front back) = swapFront (Channel lock back front)
 
-poll :: Channel i o -> IO Bool
-poll (Channel _ _ back) = not <$> Seq.null <$> readIORef back
-
 commit :: Channel i o -> i -> IO (Maybe o)
-commit (Channel lock _ back) input =
-    withMVar lock $ const commit'
+commit (Channel lock _ back) input = do
+    backQueue <- readIORef back
+    case Seq.viewl backQueue of
+        EmptyL -> return Nothing
+        _ -> withMVar lock $ const commit'
   where
     commit' =
         dequeue back >>=

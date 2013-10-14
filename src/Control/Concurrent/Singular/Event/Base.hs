@@ -19,8 +19,8 @@ newtype Event a = Event {
     runEvent :: IO ([IO ()], Primitive.Event ([IO ()], IO a))
 }
 
-newEvent :: IO Bool -> IO (Maybe a) -> (StatusRef -> (a -> IO ()) -> IO ()) -> Event a
-newEvent poll commit block = fromPrimitive $ Primitive.newEvent poll commit block
+newEvent :: IO (Maybe a) -> (StatusRef -> (a -> IO ()) -> IO ()) -> Event a
+newEvent commit block = fromPrimitive $ Primitive.newEvent commit block
 
 fromPrimitive :: Primitive.Event a -> Event a
 fromPrimitive event = Event $ return ([], fmap (\x -> ([], return x)) event)
